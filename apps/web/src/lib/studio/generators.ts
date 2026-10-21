@@ -326,6 +326,16 @@ export const STUDIO_GENERATORS: Partial<Record<StudioToolType, Generator>> = {
   reading_comprehension: createMarkdownGenerator('reading_comprehension'),
   teach_back: createMarkdownGenerator('teach_back'),
   lesson_plan: createMarkdownGenerator('lesson_plan'),
+  comparison: createMarkdownGenerator('comparison'),
+  contradictions: createMarkdownGenerator('contradictions'),
+  themes: createMarkdownGenerator('themes'),
+  definitions: createMarkdownGenerator('definitions'),
+  rubric: createMarkdownGenerator('rubric'),
+  classroom_activities: createMarkdownGenerator('classroom_activities'),
+  teaching_script: createMarkdownGenerator('teaching_script'),
+  guided_reading_questions: createMarkdownGenerator('guided_reading_questions'),
+  assessment_questions: createMarkdownGenerator('assessment_questions'),
+  dialogue: createMarkdownGenerator('dialogue'),
 
   quiz: {
     type: 'quiz',

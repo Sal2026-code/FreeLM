@@ -56,6 +56,16 @@ function remarkCitations() {
 // Citation chip
 // ---------------------------------------------------------------------------
 
+/**
+ * react-markdown strips any URL whose scheme is not http/https/mailto/etc.
+ * Our citation links use a custom scheme, so the default transform is
+ * replaced with one that only neutralises `javascript:` URLs.
+ */
+function safeUrlTransform(url: string): string {
+  if (/^\s*javascript:/i.test(url)) return '';
+  return url;
+}
+
 export interface CitationChipProps {
   citation: Citation | undefined;
   chunkId: string;
@@ -132,10 +142,12 @@ export function MarkdownRenderer({
     <div className={cn('markdown-body', className)}>
       <ReactMarkdown
         remarkPlugins={plugins}
+        urlTransform={safeUrlTransform}
         components={{
           a: ({ href, children, ...props }) => {
-            if (href?.startsWith(CITE_PROTOCOL)) {
-              const chunkId = href.slice(CITE_PROTOCOL.length);
+            const url = href ?? '';
+            if (url.startsWith(CITE_PROTOCOL)) {
+              const chunkId = url.slice(CITE_PROTOCOL.length);
               const index = indexMap.get(chunkId) ?? 0;
               return (
                 <CitationChip

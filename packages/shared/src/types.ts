@@ -258,6 +258,19 @@ export type StudioToolType =
   | 'lesson_plan'
   | 'interactive_learning'
   | 'data_analysis'
+  // Document understanding
+  | 'comparison'
+  | 'contradictions'
+  | 'themes'
+  | 'definitions'
+  // Educational outputs
+  | 'rubric'
+  | 'classroom_activities'
+  | 'teaching_script'
+  | 'guided_reading_questions'
+  | 'assessment_questions'
+  // Creative outputs
+  | 'dialogue'
   // Utility
   | 'note';
 

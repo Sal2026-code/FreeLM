@@ -47,6 +47,8 @@ export function Workspace({ notebookId }: WorkspaceProps) {
   const [activeOutputId, setActiveOutputId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [pickingIcon, setPickingIcon] = useState(false);
+  const [collapsedSources, setCollapsedSources] = useState(false);
+  const [collapsedStudio, setCollapsedStudio] = useState(false);
   const [mobilePane, setMobilePane] = useState<'sources' | 'chat' | 'studio'>(
     'chat',
   );
@@ -305,6 +307,29 @@ export function Workspace({ notebookId }: WorkspaceProps) {
     [notebookId],
   );
 
+  /** Share the notebook by creating a public link. */
+  const shareNotebook = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/notebooks/${notebookId}/share`, {
+        method: 'POST',
+      });
+      if (!response.ok) throw new Error('Could not share this notebook.');
+      const data = (await response.json()) as { url: string };
+      await navigator.clipboard.writeText(data.url);
+      toast.push({
+        tone: 'success',
+        title: 'Share link copied',
+        description: 'Anyone with the link can read this notebook.',
+      });
+    } catch (error) {
+      toast.push({
+        tone: 'error',
+        title: 'Could not share this notebook',
+        description: error instanceof Error ? error.message : undefined,
+      });
+    }
+  }, [notebookId, toast]);
+
   const readyCount = useMemo(
     () => sources.filter((source) => source.status === 'ready').length,
     [sources],
@@ -353,6 +378,7 @@ export function Workspace({ notebookId }: WorkspaceProps) {
         setPendingChat((current) => [...current, content]);
       }}
       onSavedToNote={() => void loadNotes()}
+      onEditIcon={() => setPickingIcon(true)}
     />
   );
 
@@ -366,6 +392,8 @@ export function Workspace({ notebookId }: WorkspaceProps) {
       onSelectSource={setActiveSourceId}
       onChanged={() => void loadSources()}
       onOpenChat={() => setMobilePane('chat')}
+      collapsed={collapsedSources}
+      onToggleCollapse={() => setCollapsedSources((value) => !value)}
     />
   );
 
@@ -379,6 +407,8 @@ export function Workspace({ notebookId }: WorkspaceProps) {
       onChanged={() => void refreshAll()}
       sources={sources}
       selectedSourceIds={selectedSourceIds}
+      collapsed={collapsedStudio}
+      onToggleCollapse={() => setCollapsedStudio((value) => !value)}
       onSendToChat={async (content) => {
         if (!activeThreadId) {
           await handleCreateThread();
@@ -417,10 +447,12 @@ export function Workspace({ notebookId }: WorkspaceProps) {
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-canvas">
       <TopNav
+        variant="workspace"
         notebookTitle={notebook?.title}
         notebookIcon={notebook?.icon}
         onEditIcon={() => setPickingIcon(true)}
-        right={
+        onShare={() => void shareNotebook()}
+        workspaceActions={
           <button
             type="button"
             onClick={() => void handleCreateThread()}
@@ -461,9 +493,24 @@ export function Workspace({ notebookId }: WorkspaceProps) {
           className={`min-h-0 shrink-0 border-r border-hairline ${
             mobilePane === 'sources' ? 'flex w-full' : 'hidden lg:flex'
           }`}
-          style={{ width: widths.sources }}
+          style={{ width: collapsedSources ? 0 : widths.sources }}
         >
-          {sourcesPane}
+          <div
+            className={`h-full overflow-hidden ${collapsedSources ? 'w-0' : 'w-full'}`}
+          >
+            {sourcesPane}
+          </div>
+          {collapsedSources ? (
+            <button
+              type="button"
+              onClick={() => setCollapsedSources(false)}
+              title="Show the sources panel"
+              aria-label="Show the sources panel"
+              className="flex h-full w-8 shrink-0 items-start justify-center border-r border-hairline pt-3 text-neutral-500 transition hover:text-neutral-200"
+            >
+              <span className="material-symbols-rounded text-[18px]">left_panel_open</span>
+            </button>
+          ) : null}
         </section>
 
         <Splitter
@@ -492,9 +539,21 @@ export function Workspace({ notebookId }: WorkspaceProps) {
           className={`min-h-0 shrink-0 border-l border-hairline ${
             mobilePane === 'studio' ? 'flex w-full' : 'hidden lg:flex'
           }`}
-          style={{ width: widths.studio }}
+          style={{ width: collapsedStudio ? 0 : widths.studio }}
         >
-          {studioPane}
+          {collapsedStudio ? (
+            <button
+              type="button"
+              onClick={() => setCollapsedStudio(false)}
+              title="Show the studio panel"
+              aria-label="Show the studio panel"
+              className="flex h-full w-8 shrink-0 items-start justify-center border-l border-hairline pt-3 text-neutral-500 transition hover:text-neutral-200"
+            >
+              <span className="material-symbols-rounded text-[18px]">right_panel_open</span>
+            </button>
+          ) : (
+            <div className="h-full w-full overflow-hidden">{studioPane}</div>
+          )}
         </section>
       </div>
 

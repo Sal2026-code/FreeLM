@@ -19,6 +19,9 @@ export interface SourcesPaneProps {
   onSelectSource: (id: string | null) => void;
   onChanged: () => void | Promise<void>;
   onOpenChat: () => void;
+  /** Collapse or expand the pane from the header button. */
+  onToggleCollapse?: () => void;
+  collapsed?: boolean;
 }
 
 export function SourcesPane({
@@ -30,15 +33,39 @@ export function SourcesPane({
   onSelectSource,
   onChanged,
   onOpenChat,
+  onToggleCollapse,
+  collapsed,
 }: SourcesPaneProps) {
   const toast = useToast();
   const [addOpen, setAddOpen] = useState(false);
+  const [highlightChunkId, setHighlightChunkId] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [searching, setSearching] = useState(false);
   const [candidates, setCandidates] = useState<
     { title: string; url: string; snippet: string; sourceType?: string }[]
   >([]);
   const [showSearch, setShowSearch] = useState(false);
+
+  // A citation clicked in the chat opens the source it came from and
+  // highlights the exact chunk.
+  useEffect(() => {
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent<{ chunkId: string; sourceId: string }>)
+        .detail;
+      if (!detail) return;
+      if (detail.sourceId) onSelectSource(detail.sourceId);
+      setHighlightChunkId(detail.chunkId);
+    };
+    window.addEventListener('freelm:open-source', handler);
+    return () => window.removeEventListener('freelm:open-source', handler);
+  }, [onSelectSource]);
+
+  // "Upload a source" in the chat empty state opens this pane's dialog.
+  useEffect(() => {
+    const handler = () => setAddOpen(true);
+    window.addEventListener('freelm:open-sources', handler);
+    return () => window.removeEventListener('freelm:open-sources', handler);
+  }, []);
 
   const activeSource = useMemo(
     () => sources.find((source) => source.id === activeSourceId) ?? null,
@@ -129,9 +156,9 @@ export function SourcesPane({
         <h2 className="text-sm font-semibold text-neutral-100">Sources</h2>
         <div className="flex items-center gap-0.5">
           <IconButton
-            icon="drive_file_move"
-            label="Source options"
-            onClick={() => void onChanged()}
+            icon="right_panel_close"
+            label={collapsed ? 'Expand the sources panel' : 'Collapse the sources panel'}
+            onClick={() => onToggleCollapse?.()}
           />
         </div>
       </header>
@@ -273,7 +300,11 @@ export function SourcesPane({
           <SourceViewer
             notebookId={notebookId}
             source={activeSource}
-            onBack={() => onSelectSource(null)}
+            highlightChunkId={highlightChunkId}
+            onBack={() => {
+              onSelectSource(null);
+              setHighlightChunkId(null);
+            }}
             onChanged={() => void onChanged()}
           />
         ) : sources.length === 0 ? (
@@ -285,7 +316,8 @@ export function SourcesPane({
               Saved sources will appear here
             </p>
             <p className="text-[12px] leading-5 text-neutral-600">
-              Click Add sources to add PDFs, websites, text, and more.
+              Click Add sources to add PDFs, websites, new articles, or audio
+              files. Or import a file directly from Google Drive.
             </p>
           </div>
         ) : (

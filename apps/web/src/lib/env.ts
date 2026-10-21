@@ -6,6 +6,9 @@
  * `process.env` directly for configuration, and no secret is ever hardcoded.
  */
 
+import { existsSync } from 'node:fs';
+import path from 'node:path';
+
 import { z } from 'zod';
 
 const envSchema = z.object({
@@ -21,6 +24,10 @@ const envSchema = z.object({
   FREELM_AI_PROVIDER: z
     .enum(['openai', 'gemini', 'anthropic', 'openai-compatible'])
     .default('openai'),
+
+  FREELM_EMBEDDING_PROVIDER: z
+    .enum(['auto', 'local', 'openai', 'gemini', 'anthropic', 'openai-compatible'])
+    .default('auto'),
 
   FREELM_OPENAI_API_KEY: z.string().default(''),
   FREELM_OPENAI_BASE_URL: z.string().default('https://api.openai.com/v1'),
@@ -40,6 +47,14 @@ const envSchema = z.object({
   FREELM_OPENAI_COMPATIBLE_API_KEY: z.string().default(''),
   FREELM_OPENAI_COMPATIBLE_CHAT_MODEL: z.string().default(''),
   FREELM_OPENAI_COMPATIBLE_EMBEDDING_MODEL: z.string().default(''),
+
+  /**
+   * Which text-to-speech backend to use for Audio Overviews.
+   * `edge` is keyless and speaks 100+ languages.
+   */
+  FREELM_TTS_BACKEND: z
+    .enum(['auto', 'edge', 'openai', 'gemini'])
+    .default('auto'),
 
   FREELM_TITLE_MODEL: z.string().default(''),
 
@@ -72,6 +87,26 @@ const envSchema = z.object({
 });
 
 function loadEnv(): z.infer<typeof envSchema> {
+  // Next.js loads `.env.local` itself, but the BullMQ workers and the
+  // scripts run under plain Node — so load it here too. Existing process
+  // variables always win, so this never overrides a real deployment.
+  if (typeof process !== 'undefined' && typeof process.loadEnvFile === 'function') {
+    for (const candidate of [
+      '.env.local',
+      '../../.env.local',
+      path.join(process.cwd(), 'apps', 'web', '.env.local'),
+    ]) {
+      try {
+        if (existsSync(candidate)) {
+          process.loadEnvFile(candidate);
+          break;
+        }
+      } catch {
+        /* try the next candidate */
+      }
+    }
+  }
+
   const raw: Record<string, unknown> = {};
   const source =
     typeof process !== 'undefined' && process.env ? process.env : {};
@@ -103,6 +138,32 @@ export function hasAiProvider(): boolean {
       return env.FREELM_OPENAI_COMPATIBLE_BASE_URL.length > 0;
     default:
       return false;
+  }
+}
+
+/** True when a hosted embedding provider is reachable. */
+export function hasEmbeddingProvider(): boolean {
+  switch (env.FREELM_EMBEDDING_PROVIDER) {
+    case 'local':
+      return true;
+    case 'openai':
+      return env.FREELM_OPENAI_API_KEY.length > 0;
+    case 'gemini':
+      return env.FREELM_GEMINI_API_KEY.length > 0;
+    case 'anthropic':
+      return (
+        env.FREELM_ANTHROPIC_API_KEY.length > 0 ||
+        env.FREELM_OPENAI_API_KEY.length > 0
+      );
+    case 'openai-compatible':
+      return env.FREELM_OPENAI_COMPATIBLE_BASE_URL.length > 0;
+    case 'auto':
+    default:
+      return (
+        env.FREELM_OPENAI_API_KEY.length > 0 ||
+        env.FREELM_GEMINI_API_KEY.length > 0 ||
+        env.FREELM_OPENAI_COMPATIBLE_BASE_URL.length > 0
+      );
   }
 }
 

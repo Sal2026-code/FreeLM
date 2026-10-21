@@ -129,17 +129,13 @@ export default function NotebooksPage() {
   return (
     <div className="min-h-screen bg-canvas">
       <TopNav
+        variant="list"
         subnav={<NotebookSubNav scope={scope} onChange={setScope} />}
-        right={
+        searchValue={search}
+        onSearchValueChange={setSearch}
+        searchPlaceholder="Search notebooks"
+        listActions={
           <>
-            <div className="hidden lg:block">
-              <input
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search notebooks"
-                className="field h-9 w-56 py-0"
-              />
-            </div>
             <div className="hidden items-center gap-1 sm:flex">
               <IconButton
                 icon="grid_view"
@@ -193,10 +189,9 @@ export default function NotebooksPage() {
               ]}
             />
             <Button
-              variant="primary"
               icon="add"
               onClick={() => setCreating(true)}
-              className="hidden sm:inline-flex"
+              className="hidden bg-neutral-100 text-neutral-900 hover:bg-white sm:inline-flex"
             >
               Create new
             </Button>

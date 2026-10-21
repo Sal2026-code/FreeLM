@@ -40,6 +40,8 @@ export interface ChatPaneProps {
   onSelectSources: (ids: string[]) => void;
   onSendToChat: (content: string) => void | Promise<void>;
   onSavedToNote: () => void;
+  /** Opens the device emoji picker so the notebook icon can be changed. */
+  onEditIcon?: () => void;
 }
 
 export function ChatPane({
@@ -60,6 +62,7 @@ export function ChatPane({
   onSelectSources,
   onSendToChat,
   onSavedToNote,
+  onEditIcon,
 }: ChatPaneProps) {
   const toast = useToast();
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -468,6 +471,7 @@ export function ChatPane({
               readyCount={readySources.length}
               onRefresh={onRefreshOverview}
               onAsk={(question) => void send(question)}
+              onEditIcon={onEditIcon}
               onOpenSources={() => {
                 window.dispatchEvent(
                   new CustomEvent('freelm:open-sources'),
@@ -481,11 +485,11 @@ export function ChatPane({
               <MessageBubble
                 key={message.id}
                 message={message}
-                onCitationClick={(chunkId) => {
+                onCitationClick={(chunkId, sourceId) => {
                   setHighlightChunkId(chunkId);
                   window.dispatchEvent(
                     new CustomEvent('freelm:open-source', {
-                      detail: { chunkId },
+                      detail: { chunkId, sourceId },
                     }),
                   );
                 }}
@@ -602,7 +606,7 @@ function MessageBubble({
   onSendToChat,
 }: {
   message: Message;
-  onCitationClick: (chunkId: string) => void;
+  onCitationClick: (chunkId: string, sourceId: string) => void;
   onSavedToNote: () => void;
   onSendToChat: (content: string) => void | Promise<void>;
 }) {
@@ -642,12 +646,20 @@ function MessageBubble({
     }
   }
 
+  const citationMap = useMemo(() => {
+    const map = new Map(message.citations.map((c) => [c.chunkId, c]));
+    return map;
+  }, [message.citations]);
+
   return (
     <article className="group">
       <MarkdownRenderer
         content={message.content}
         citations={message.citations}
-        onCitationClick={onCitationClick}
+        onCitationClick={(chunkId) => {
+          const citation = citationMap.get(chunkId);
+          onCitationClick(chunkId, citation?.sourceId ?? '');
+        }}
       />
 
       <div className="mt-2.5 flex items-center gap-1.5">
@@ -701,6 +713,7 @@ function OverviewCard({
   readyCount,
   onRefresh,
   onAsk,
+  onEditIcon,
   onOpenSources,
 }: {
   notebook: Notebook | null;
@@ -708,6 +721,7 @@ function OverviewCard({
   readyCount: number;
   onRefresh: () => void;
   onAsk: (question: string) => void;
+  onEditIcon?: () => void;
   onOpenSources: () => void;
 }) {
   const toast = useToast();
@@ -744,9 +758,15 @@ function OverviewCard({
     <div className="mb-6">
       {/* Icon + title + source count */}
       <div className="mb-3 flex items-start gap-3">
-        <span className="text-4xl leading-none" aria-hidden>
-          {notebook?.icon ?? '📓'}
-        </span>
+        <button
+          type="button"
+          onClick={onEditIcon}
+          title="Change the notebook icon"
+          aria-label="Change the notebook icon"
+          className="-m-1 rounded-xl p-1 text-4xl leading-none transition hover:bg-surface-2"
+        >
+          <span aria-hidden>{notebook?.icon ?? '📓'}</span>
+        </button>
         <div className="min-w-0">
           <p className="text-[13px] text-neutral-500">
             {readyCount} {readyCount === 1 ? 'source' : 'sources'}

@@ -10,6 +10,7 @@ import { env, hasAiProvider } from '@/lib/env';
 import { AnthropicProvider } from './anthropic';
 import { UpstreamError } from './errors';
 import { GeminiProvider } from './gemini';
+import { LocalEmbeddingProvider } from './local';
 import { OpenAiProvider } from './openai';
 import type { AiProvider } from './provider';
 
@@ -85,7 +86,16 @@ function buildCompatibleFallback():
 export function getEmbeddingProvider(): AiProvider {
   if (cachedEmbedding) return cachedEmbedding;
 
-  if (env.FREELM_AI_PROVIDER === 'anthropic') {
+  // The embedding provider can differ from the chat provider (Claude has no
+  // embeddings) and can be pinned to the offline local model.
+  const choice = env.FREELM_EMBEDDING_PROVIDER;
+
+  if (choice === 'local') {
+    cachedEmbedding = new LocalEmbeddingProvider(env.FREELM_EMBEDDING_DIM);
+    return cachedEmbedding;
+  }
+
+  if (choice === 'anthropic') {
     const fallback = buildCompatibleFallback();
     if (!fallback) {
       throw new UpstreamError({
@@ -107,7 +117,7 @@ export function getEmbeddingProvider(): AiProvider {
     return cachedEmbedding;
   }
 
-  if (env.FREELM_AI_PROVIDER === 'gemini') {
+  if (choice === 'gemini') {
     cachedEmbedding = new GeminiProvider({
       apiKey: env.FREELM_GEMINI_API_KEY,
       chatModel: env.FREELM_GEMINI_CHAT_MODEL,
@@ -117,7 +127,7 @@ export function getEmbeddingProvider(): AiProvider {
     return cachedEmbedding;
   }
 
-  if (env.FREELM_AI_PROVIDER === 'openai-compatible') {
+  if (choice === 'openai-compatible') {
     cachedEmbedding = new OpenAiProvider({
       apiKey: env.FREELM_OPENAI_COMPATIBLE_API_KEY,
       baseUrl: env.FREELM_OPENAI_COMPATIBLE_BASE_URL,
@@ -130,14 +140,56 @@ export function getEmbeddingProvider(): AiProvider {
     return cachedEmbedding;
   }
 
-  cachedEmbedding = new OpenAiProvider({
-    apiKey: env.FREELM_OPENAI_API_KEY,
-    baseUrl: env.FREELM_OPENAI_BASE_URL,
-    chatModel: env.FREELM_OPENAI_CHAT_MODEL,
-    embeddingModel: env.FREELM_OPENAI_EMBEDDING_MODEL,
-    ttsModel: env.FREELM_OPENAI_TTS_MODEL,
-    name: 'openai',
-  });
+  if (choice === 'openai') {
+    cachedEmbedding = new OpenAiProvider({
+      apiKey: env.FREELM_OPENAI_API_KEY,
+      baseUrl: env.FREELM_OPENAI_BASE_URL,
+      chatModel: env.FREELM_OPENAI_CHAT_MODEL,
+      embeddingModel: env.FREELM_OPENAI_EMBEDDING_MODEL,
+      ttsModel: env.FREELM_OPENAI_TTS_MODEL,
+      name: 'openai',
+    });
+    return cachedEmbedding;
+  }
+
+  // auto — use a hosted provider when one is configured, otherwise fall back
+  // to the offline local embedding model so the app still works keyless.
+  if (env.FREELM_OPENAI_API_KEY) {
+    cachedEmbedding = new OpenAiProvider({
+      apiKey: env.FREELM_OPENAI_API_KEY,
+      baseUrl: env.FREELM_OPENAI_BASE_URL,
+      chatModel: env.FREELM_OPENAI_CHAT_MODEL,
+      embeddingModel: env.FREELM_OPENAI_EMBEDDING_MODEL,
+      ttsModel: env.FREELM_OPENAI_TTS_MODEL,
+      name: 'openai',
+    });
+    return cachedEmbedding;
+  }
+
+  if (env.FREELM_GEMINI_API_KEY) {
+    cachedEmbedding = new GeminiProvider({
+      apiKey: env.FREELM_GEMINI_API_KEY,
+      chatModel: env.FREELM_GEMINI_CHAT_MODEL,
+      embeddingModel: env.FREELM_GEMINI_EMBEDDING_MODEL,
+      ttsModel: env.FREELM_GEMINI_TTS_MODEL,
+    });
+    return cachedEmbedding;
+  }
+
+  if (env.FREELM_OPENAI_COMPATIBLE_BASE_URL) {
+    cachedEmbedding = new OpenAiProvider({
+      apiKey: env.FREELM_OPENAI_COMPATIBLE_API_KEY,
+      baseUrl: env.FREELM_OPENAI_COMPATIBLE_BASE_URL,
+      chatModel: env.FREELM_OPENAI_COMPATIBLE_CHAT_MODEL || 'local-model',
+      embeddingModel:
+        env.FREELM_OPENAI_COMPATIBLE_EMBEDDING_MODEL || 'text-embedding-3-small',
+      ttsModel: env.FREELM_OPENAI_TTS_MODEL,
+      name: 'openai-compatible',
+    });
+    return cachedEmbedding;
+  }
+
+  cachedEmbedding = new LocalEmbeddingProvider(env.FREELM_EMBEDDING_DIM);
   return cachedEmbedding;
 }
 

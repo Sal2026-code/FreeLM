@@ -381,6 +381,86 @@ export const STUDIO_TOOLS: readonly StudioToolMeta[] = [
     tier: 3,
     viewer: 'report',
   },
+  {
+    type: 'comparison',
+    label: 'Comparison',
+    icon: 'compare_arrows',
+    description: 'A side-by-side comparison of two sources, authors or viewpoints.',
+    tier: 3,
+    viewer: 'report',
+  },
+  {
+    type: 'contradictions',
+    label: 'Contradictions',
+    icon: 'rule',
+    description: 'Where the sources disagree, and what the disagreement is about.',
+    tier: 3,
+    viewer: 'report',
+  },
+  {
+    type: 'themes',
+    label: 'Themes',
+    icon: 'palette',
+    description: 'The recurring ideas and arguments across the material.',
+    tier: 3,
+    viewer: 'report',
+  },
+  {
+    type: 'definitions',
+    label: 'Definitions',
+    icon: 'menu_book',
+    description: 'Every key term, defined from the source itself.',
+    tier: 3,
+    viewer: 'report',
+  },
+  {
+    type: 'rubric',
+    label: 'Rubric',
+    icon: 'checklist',
+    description: 'An assessment rubric for evaluating work on this material.',
+    tier: 3,
+    viewer: 'report',
+  },
+  {
+    type: 'classroom_activities',
+    label: 'Classroom Activities',
+    icon: 'groups',
+    description: 'Ready-to-run activities for teaching this material.',
+    tier: 3,
+    viewer: 'report',
+  },
+  {
+    type: 'teaching_script',
+    label: 'Teaching Script',
+    icon: 'record_voice_over',
+    description: 'A spoken script for delivering a lesson on this material.',
+    tier: 3,
+    viewer: 'report',
+  },
+  {
+    type: 'guided_reading_questions',
+    label: 'Guided Reading',
+    icon: 'visibility',
+    description: 'Questions that guide a learner through the text as they read.',
+    tier: 3,
+    viewer: 'report',
+  },
+  {
+    type: 'assessment_questions',
+    label: 'Assessment Questions',
+    icon: 'assignment',
+    description: 'Exam-style questions with marking guidance.',
+    tier: 3,
+    viewer: 'report',
+  },
+  {
+    type: 'dialogue',
+    label: 'Dialogue',
+    icon: 'forum',
+    description: 'A scripted conversation exploring the material.',
+    tier: 3,
+    viewer: 'report',
+  },
 ] as const;
 
 export const STUDIO_TOOL_MAP: Record<StudioToolType, StudioToolMeta> =
@@ -392,17 +472,24 @@ export const STUDIO_TOOL_MAP: Record<StudioToolType, StudioToolMeta> =
     {} as Record<StudioToolType, StudioToolMeta>,
   );
 
-/** Tools that appear as buttons in the Studio grid. */
+/**
+ * Tools that appear as buttons in the Studio grid.
+ *
+ * The first seven match the reference layout exactly (a 3-column grid that
+ * reads Audio Overview · Video Overview · Mind Map / Reports · Flashcards ·
+ * Quiz / Data Table). Slide Decks and Infographics follow — they are the two
+ * tools Google added to the Studio panel in 2026.
+ */
 export const STUDIO_GRID_TOOLS: StudioToolType[] = [
   'audio_overview',
   'video_overview',
   'mind_map',
   'report',
-  'slide_deck',
-  'infographic',
   'flashcards',
   'quiz',
   'data_table',
+  'slide_deck',
+  'infographic',
 ];
 
 // ---------------------------------------------------------------------------

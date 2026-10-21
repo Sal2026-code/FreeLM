@@ -104,7 +104,18 @@ export async function POST(
     }
 
     const result = await generator.generate(input);
-    const output = await finaliseOutput(row!.id, result);
+    const output = await finaliseOutput(row!.id, {
+      ...result,
+      meta: {
+        ...result.meta,
+        // Kept so the Studio menu can show "View custom prompt" and
+        // regenerate the artifact with the same settings.
+        prompt: input.prompt,
+        language: input.language,
+        options: input.options,
+        sourceIds: input.sourceIds,
+      },
+    });
 
     publishEvent(notebookId, { type: 'output', output });
     return NextResponse.json(output);

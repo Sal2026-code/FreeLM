@@ -112,6 +112,16 @@ export const studioToolEnum = pgEnum('studio_tool', [
   'lesson_plan',
   'interactive_learning',
   'data_analysis',
+  'comparison',
+  'contradictions',
+  'themes',
+  'definitions',
+  'rubric',
+  'classroom_activities',
+  'teaching_script',
+  'guided_reading_questions',
+  'assessment_questions',
+  'dialogue',
   'note',
 ]);
 

@@ -25,31 +25,56 @@ export function BrandMark({ size = 28 }: { size?: number }) {
 }
 
 export interface TopNavProps {
-  /** Rendered under the brand on the notebooks list screen. */
+  /**
+   * `list` — the notebooks picker: brand row, then a sub-navigation row with
+   * the All / My notebooks / Featured notebooks pills on the left and the
+   * search, view toggle, sort and "Create new" controls on the right.
+   *
+   * `workspace` — inside a notebook: the notebook emoji and title on the
+   * left, and Create notebook / Share / Settings / apps / account on the
+   * right.
+   */
+  variant?: 'list' | 'workspace';
   subnav?: ReactNode;
-  /** The current notebook title, when inside a notebook. */
   notebookTitle?: string;
   notebookIcon?: string;
   /** Opens the device emoji picker so the notebook icon can be changed. */
   onEditIcon?: () => void;
-  right?: ReactNode;
+  /** Extra controls rendered on the right of the list screen. */
+  listActions?: ReactNode;
+  /** Extra controls rendered on the right of the workspace screen. */
+  workspaceActions?: ReactNode;
+  onShare?: () => void;
+  /**
+   * When provided, the search icon expands an inline field bound to these.
+   * This mirrors the reference layout: a search icon that opens a field.
+   */
+  searchValue?: string;
+  onSearchValueChange?: (value: string) => void;
+  searchPlaceholder?: string;
   children?: ReactNode;
 }
 
 export function TopNav({
+  variant = 'list',
   subnav,
   notebookTitle,
   notebookIcon,
   onEditIcon,
-  right,
+  listActions,
+  workspaceActions,
+  onShare,
+  searchValue,
+  onSearchValueChange,
+  searchPlaceholder = 'Search',
   children,
 }: TopNavProps) {
   const [searchOpen, setSearchOpen] = useState(false);
 
   return (
     <header className="sticky top-0 z-40 border-b border-hairline bg-canvas/85 backdrop-blur-xl">
+      {/* Row 1 — brand and account */}
       <div className="flex h-14 items-center gap-3 px-3 sm:px-4">
-        {/* Brand */}
         <Link
           href="/app"
           className="flex shrink-0 items-center gap-2.5 rounded-pill py-1 pr-2 transition hover:bg-surface-2"
@@ -60,7 +85,7 @@ export function TopNav({
           </span>
         </Link>
 
-        {notebookTitle ? (
+        {variant === 'workspace' && notebookTitle ? (
           <>
             <span className="hidden h-5 w-px bg-hairline sm:block" />
             <div className="flex min-w-0 items-center gap-2 rounded-pill px-2 py-1">
@@ -89,30 +114,79 @@ export function TopNav({
           </>
         ) : null}
 
-        {subnav}
-
         <div className="ml-auto flex items-center gap-1.5">
-          {right}
-          <Tooltip label="Search">
-            <IconButton
-              icon="search"
-              label="Search"
-              onClick={() => setSearchOpen((value) => !value)}
-              active={searchOpen}
-            />
-          </Tooltip>
-          <span className="mx-0.5 hidden h-5 w-px bg-hairline sm:block" />
-          <Link href="/app/settings" className="hidden sm:block">
-            <span className="pill">
-              <span className="material-symbols-rounded text-[18px]" aria-hidden>
-                settings
-              </span>
-              <span className="hidden md:inline">Settings</span>
-            </span>
-          </Link>
-          <AccountMenu />
+          {variant === 'workspace' ? (
+            <>
+              <Link href="/app" className="hidden sm:inline-flex">
+                <span className="pill bg-neutral-100 text-neutral-900 hover:bg-white">
+                  <span className="material-symbols-rounded text-[18px]" aria-hidden>
+                    add
+                  </span>
+                  Create notebook
+                </span>
+              </Link>
+              {onShare ? (
+                <button type="button" onClick={onShare} className="pill hidden sm:inline-flex">
+                  <span className="material-symbols-rounded text-[18px]" aria-hidden>
+                    share
+                  </span>
+                  <span className="hidden md:inline">Share</span>
+                </button>
+              ) : null}
+              {workspaceActions}
+              <Link href="/app/settings" className="hidden sm:block">
+                <span className="pill">
+                  <span className="material-symbols-rounded text-[18px]" aria-hidden>
+                    settings
+                  </span>
+                  <span className="hidden md:inline">Settings</span>
+                </span>
+              </Link>
+              <IconButton icon="apps" label="Apps" className="hidden sm:inline-flex" />
+              <AccountMenu />
+            </>
+          ) : (
+            <>
+              <Link href="/app/settings" className="hidden sm:block">
+                <span className="pill">
+                  <span className="material-symbols-rounded text-[18px]" aria-hidden>
+                    settings
+                  </span>
+                  <span className="hidden md:inline">Settings</span>
+                </span>
+              </Link>
+              <AccountMenu />
+            </>
+          )}
         </div>
       </div>
+
+      {/* Row 2 — sub-navigation and list controls */}
+      {variant === 'list' ? (
+        <div className="flex flex-wrap items-center gap-2 border-t border-hairline px-3 py-2 sm:px-4">
+          {subnav}
+          <div className="ml-auto flex items-center gap-1.5">
+            <Tooltip label="Search">
+              <IconButton
+                icon="search"
+                label="Search"
+                onClick={() => setSearchOpen((value) => !value)}
+                active={searchOpen}
+              />
+            </Tooltip>
+            {searchOpen && onSearchValueChange ? (
+              <input
+                autoFocus
+                value={searchValue ?? ''}
+                onChange={(event) => onSearchValueChange(event.target.value)}
+                placeholder={searchPlaceholder}
+                className="field h-9 w-56 py-0"
+              />
+            ) : null}
+            {listActions}
+          </div>
+        </div>
+      ) : null}
 
       {searchOpen ? (
         <div className="border-t border-hairline px-3 py-2 sm:px-4">
@@ -126,8 +200,6 @@ export function TopNav({
 }
 
 function AccountMenu() {
-  const [open, setOpen] = useState(false);
-
   return (
     <Dropdown
       align="end"
@@ -142,7 +214,6 @@ function AccountMenu() {
           id: 'guest',
           label: 'Guest session',
           icon: 'person',
-          onSelect: () => setOpen(false),
         },
         {
           id: 'signin',
@@ -180,14 +251,14 @@ export function NotebookSubNav({
   ];
 
   return (
-    <div className="ml-1 hidden items-center gap-1 md:flex">
+    <div className="flex items-center gap-1 overflow-x-auto">
       {options.map((option) => (
         <button
           key={option.value}
           type="button"
           onClick={() => onChange(option.value)}
           className={cn(
-            'rounded-pill px-3 py-1.5 text-[13px] font-medium transition',
+            'whitespace-nowrap rounded-pill px-3 py-1.5 text-[13px] font-medium transition',
             scope === option.value
               ? 'bg-surface-3 text-neutral-50'
               : 'text-neutral-500 hover:text-neutral-300',
@@ -268,11 +339,7 @@ function GlobalSearch({ onClose }: { onClose: () => void }) {
           {results.map((result) => (
             <li key={`${result.type}-${result.id}`}>
               <Link
-                href={
-                  result.type === 'notebook'
-                    ? `/app/notebooks/${result.id}`
-                    : `/app/notebooks/${result.id}`
-                }
+                href={`/app/notebooks/${result.id}`}
                 onClick={onClose}
                 className="flex items-center gap-2.5 px-3 py-2 text-sm text-neutral-200 transition hover:bg-surface-3"
               >

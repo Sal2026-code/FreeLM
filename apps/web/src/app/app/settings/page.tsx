@@ -43,7 +43,7 @@ export default function SettingsPage() {
 
   return (
     <div className="min-h-screen bg-canvas">
-      <TopNav />
+      <TopNav variant="list" />
 
       <main className="mx-auto w-full max-w-3xl px-4 py-8">
         <h1 className="text-2xl font-semibold tracking-tight text-neutral-50">

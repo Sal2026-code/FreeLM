@@ -35,7 +35,23 @@ export interface VoiceSet {
 export function resolveVoices(languageCode = 'en'): VoiceSet {
   const language: Language = getLanguage(languageCode);
 
-  if (env.FREELM_AI_PROVIDER === 'gemini' && env.FREELM_GEMINI_API_KEY) {
+  const backend = env.FREELM_TTS_BACKEND;
+
+  if (backend === 'edge') {
+    return {
+      backend: 'edge',
+      hostA: language.edge ?? 'en-US-AriaNeural',
+      hostB: edgeAlternateVoice(language),
+      narrator: language.edge ?? 'en-US-AriaNeural',
+    };
+  }
+
+  if (
+    backend === 'gemini' ||
+    (backend === 'auto' &&
+      env.FREELM_AI_PROVIDER === 'gemini' &&
+      env.FREELM_GEMINI_API_KEY)
+  ) {
     return {
       backend: 'gemini',
       hostA: language.gemini ?? 'Kore',
@@ -45,14 +61,25 @@ export function resolveVoices(languageCode = 'en'): VoiceSet {
   }
 
   if (
-    (env.FREELM_AI_PROVIDER === 'openai' || env.FREELM_AI_PROVIDER === 'openai-compatible') &&
-    env.FREELM_OPENAI_API_KEY
+    backend === 'openai' ||
+    (backend === 'auto' && env.FREELM_OPENAI_API_KEY)
   ) {
     return {
       backend: 'openai',
       hostA: 'shimmer',
       hostB: 'onyx',
       narrator: 'shimmer',
+    };
+  }
+
+  if (backend === 'auto' && env.FREELM_AI_PROVIDER === 'openai-compatible') {
+    // An OpenAI-compatible endpoint may or may not expose /audio/speech, so
+    // the keyless backend is the safe default.
+    return {
+      backend: 'edge',
+      hostA: language.edge ?? 'en-US-AriaNeural',
+      hostB: edgeAlternateVoice(language),
+      narrator: language.edge ?? 'en-US-AriaNeural',
     };
   }
 

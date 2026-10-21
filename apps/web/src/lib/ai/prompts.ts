@@ -438,6 +438,54 @@ Return ONLY the Markdown body.`,
 Sections: Learning goals, Materials, Warm-up, Main activity (with timings),
 Guided practice, Independent practice, Assessment, Homework.
 Return ONLY the Markdown body.`,
+  comparison: `Write a comparative analysis in Markdown.
+Pick the two most comparable things in the sources (documents, authors,
+arguments or viewpoints). Use a Markdown table for the side-by-side, then
+explain where they agree, where they differ, and which differences matter.
+Name both sides explicitly and attribute each claim to its source.
+Return ONLY the Markdown body.`,
+  contradictions: `Write an analysis of the disagreements between the sources in
+Markdown. One H2 per contradiction. For each: the claim, what each source says
+about it, whether it is a real conflict or a difference of emphasis, and how a
+reader should think about it. If the sources actually agree, say so plainly
+rather than inventing disagreement. Return ONLY the Markdown body.`,
+  themes: `Write the themes of the material in Markdown.
+For each theme: a heading, a one-sentence statement of the theme, the evidence
+for it (with citations), and where in the sources it appears most strongly.
+Rank the themes by how central they are. Return ONLY the Markdown body.`,
+  definitions: `Write a glossary of the key terms in Markdown.
+One H2 per term. Then the definition as the source gives it, followed by a
+plain-language restatement and a short example. Use the source's own wording
+for the definition. Return ONLY the Markdown body.`,
+  rubric: `Write an assessment rubric in Markdown.
+A Markdown table with the rows being the criteria and the columns being the
+performance levels (for example: Excellent / Proficient / Developing / Not Yet).
+Each cell describes what that level looks like, grounded in the material.
+Add a short "how to use this rubric" note afterwards. Return ONLY the Markdown
+body.`,
+  classroom_activities: `Write classroom activities in Markdown.
+For each activity: a name, the learning goal it serves, materials, a
+step-by-step procedure with timings, and how to tell it worked. Include at
+least one collaborative and one individual activity. Return ONLY the Markdown
+body.`,
+  teaching_script: `Write a teaching script in Markdown.
+A spoken, word-for-word script a teacher can read aloud, with stage directions
+in italics, the key concept being taught at each point, and a natural place
+for a check question. Return ONLY the Markdown body.`,
+  guided_reading_questions: `Write guided reading questions in Markdown.
+One H2 per section of the material. Under each, 3-5 questions that guide a
+learner through the text in order — the questions should be answerable from
+that section and should lead the learner to the key idea rather than test
+trivia. Return ONLY the Markdown body.`,
+  assessment_questions: `Write assessment questions in Markdown.
+Ten questions of increasing difficulty, each with a short model answer and the
+marking guidance (how many marks, what a full-mark answer contains). Mix
+recall, understanding and application questions. Return ONLY the Markdown body.`,
+  dialogue: `Write a scripted dialogue in Markdown.
+Two speakers explore the material — asking each other questions, disagreeing
+gently and building toward an understanding. Use "**Speaker:**" for each turn.
+Keep each turn to 1-3 natural sentences. The content must stay grounded in the
+sources. Return ONLY the Markdown body.`,
 };
 
 // ---------------------------------------------------------------------------

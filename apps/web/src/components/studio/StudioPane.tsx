@@ -26,6 +26,9 @@ export interface StudioPaneProps {
   sources: Source[];
   selectedSourceIds: string[];
   onSendToChat: (content: string) => void | Promise<void>;
+  /** Collapse or expand the pane from the header button. */
+  onToggleCollapse?: () => void;
+  collapsed?: boolean;
 }
 
 export function StudioPane({
@@ -38,6 +41,8 @@ export function StudioPane({
   sources,
   selectedSourceIds,
   onSendToChat,
+  onToggleCollapse,
+  collapsed,
 }: StudioPaneProps) {
   const toast = useToast();
   const [modalTool, setModalTool] = useState<string | null>(null);
@@ -81,9 +86,9 @@ export function StudioPane({
       <header className="flex shrink-0 items-center justify-between gap-2 px-3 pb-2 pt-3">
         <h2 className="text-sm font-semibold text-neutral-100">Studio</h2>
         <IconButton
-          icon="info"
-          label="Studio options"
-          onClick={() => undefined}
+          icon="left_panel_close"
+          label={collapsed ? 'Expand the studio panel' : 'Collapse the studio panel'}
+          onClick={() => onToggleCollapse?.()}
         />
       </header>
 
@@ -219,6 +224,65 @@ export function StudioPane({
                               },
                             },
                             {
+                              id: 'prompt',
+                              label: 'View custom prompt',
+                              icon: 'subject',
+                              onSelect: () => {
+                                const prompt = (output.meta as { prompt?: string })
+                                  ?.prompt;
+                                toast.push({
+                                  tone: 'info',
+                                  title: 'Custom prompt',
+                                  description: prompt?.trim()
+                                    ? prompt
+                                    : 'This artifact was generated without extra instructions.',
+                                });
+                              },
+                            },
+                            {
+                              id: 'regenerate',
+                              label: 'Regenerate',
+                              icon: 'refresh',
+                              onSelect: async () => {
+                                try {
+                                  await fetch(
+                                    `/api/notebooks/${notebookId}/studio/generate`,
+                                    {
+                                      method: 'POST',
+                                      headers: {
+                                        'Content-Type': 'application/json',
+                                      },
+                                      body: JSON.stringify({
+                                        type: output.type,
+                                        sourceIds:
+                                          (output.meta as { sourceIds?: string[] })
+                                            ?.sourceIds ?? output.sourceIds,
+                                        prompt:
+                                          (output.meta as { prompt?: string })
+                                            ?.prompt ?? '',
+                                        language:
+                                          (output.meta as { language?: string })
+                                            ?.language ?? 'en',
+                                        options:
+                                          (output.meta as { options?: Record<string, unknown> })
+                                            ?.options ?? {},
+                                      }),
+                                    },
+                                  );
+                                  toast.push({
+                                    tone: 'success',
+                                    title: 'Regenerating…',
+                                  });
+                                  await onChanged();
+                                } catch {
+                                  toast.push({
+                                    tone: 'error',
+                                    title: 'Could not regenerate that',
+                                  });
+                                }
+                              },
+                            },
+                            {
                               id: 'delete',
                               label: 'Delete',
                               icon: 'delete',
@@ -313,10 +377,10 @@ export function StudioPane({
         )}
       </div>
 
-      {/* Add note */}
-      <div className="shrink-0 px-3 pb-3 pt-1">
+      {/* Add note — bottom right of the Studio pane */}
+      <div className="flex shrink-0 justify-end px-3 pb-3 pt-1">
         {addingNote ? (
-          <div className="space-y-2 rounded-xl border border-hairline bg-surface-2 p-2">
+          <div className="w-full space-y-2 rounded-xl border border-hairline bg-surface-2 p-2">
             <input
               autoFocus
               value={noteTitle}
@@ -346,12 +410,7 @@ export function StudioPane({
             </div>
           </div>
         ) : (
-          <Button
-            fullWidth
-            icon="add"
-            onClick={() => setAddingNote(true)}
-            className="justify-center"
-          >
+          <Button icon="add" onClick={() => setAddingNote(true)}>
             Add note
           </Button>
         )}

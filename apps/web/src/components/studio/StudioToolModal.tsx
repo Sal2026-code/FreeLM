@@ -551,6 +551,10 @@ export function StudioToolModal({
               }
               className="field resize-none pr-12 text-[13px]"
             />
+            {/* The "Tab →" hint matches the reference modal. */}
+            <span className="pointer-events-none absolute right-3 top-2 hidden text-[11px] text-neutral-500 sm:inline">
+              Tab →
+            </span>
             <button
               type="button"
               onClick={() => void suggestFocus()}
