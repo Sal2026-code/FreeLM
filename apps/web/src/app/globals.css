@@ -481,6 +481,27 @@ body {
     flex-basis var(--duration-medium) var(--ease-standard);
 }
 
+/* A mind-map node lifts slightly on hover. */
+.mind-node {
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: transform var(--duration-short) var(--ease-spring),
+    opacity var(--duration-short) var(--ease-standard);
+}
+
+.mind-node:hover {
+  transform: scale(1.05);
+}
+
+/* A source that is being ingested shows a travelling progress bar. */
+.progress-track {
+  position: relative;
+  overflow: hidden;
+  height: 2px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
 /* --- Reduced motion ------------------------------------------------------- */
 
 @media (prefers-reduced-motion: reduce) {

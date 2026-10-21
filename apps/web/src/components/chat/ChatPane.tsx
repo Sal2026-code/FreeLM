@@ -751,8 +751,8 @@ function OverviewCard({
 
   if (readyCount === 0) {
     return (
-      <div className="flex flex-col items-center gap-3 py-16 text-center">
-        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-accent/15 text-accent">
+      <div className="anim-fade-in flex flex-col items-center gap-3 py-16 text-center">
+        <span className="anim-float flex h-10 w-10 items-center justify-center rounded-full bg-accent/15 text-accent">
           <span className="material-symbols-rounded text-[20px]" aria-hidden>
             add
           </span>

@@ -39,6 +39,42 @@ FreeLM is a three-pane workspace, exactly like the original:
 | **Chat** (center) | Ask anything. Every factual claim is grounded in a retrieved chunk and carries a clickable citation chip. Click a chip and the Sources pane scrolls to the exact passage and highlights it. Six response modes, source scoping, custom instructions, multiple threads, and a pinned notebook overview with suggested questions. |
 | **Studio** (right) | Generate real deliverables: audio overviews, video overviews, slide decks, infographics, mind maps, quizzes, flashcards, data tables, study guides, briefing docs, FAQs, timelines, outlines, and more. Save the result as a note, or send it back into the chat. |
 
+### Limits — and where they are (and are not)
+
+| Limit | FreeLM |
+|---|---|
+| **Number of sources per notebook** | **Unlimited.** There is no source-count check anywhere in the schema, the API or the UI. |
+| **Number of notebooks** | Unlimited |
+| **Size of a single file** | 200 MB (`FREELM_MAX_SOURCE_MB`) — the same ceiling Google uses, and it is configurable |
+| **Words in a single source** | 500,000 (`FREELM_MAX_SOURCE_WORDS`) — also configurable |
+| **Chats, threads, notes, Studio outputs** | Unlimited |
+
+The per-file ceilings exist because a single document has to be extracted,
+chunked and embedded in one pass; raise them in `.env.local` if you need
+bigger files.
+
+### Cost — there is no paywall, and no hidden bill
+
+FreeLM itself is **AGPL-3.0 free software** with no tiers, no usage
+metering, no feature flags and no upgrade prompts. Every tool is unlocked for
+every user, including the ones Google gates behind its paid plans.
+
+The only thing that can ever cost money is the **AI provider you point it
+at** — that is a third-party bill, not a FreeLM paywall. FreeLM is built so
+you can run it at **zero cost**:
+
+- `FREELM_EMBEDDING_PROVIDER=local` — the built-in offline embedding model.
+  No key, no network, no usage.
+- `FREELM_TTS_BACKEND=edge` — the keyless voice endpoint that narrates
+  Audio Overviews in 100+ languages.
+- Web search works keyless via DuckDuckGo; Brave and Tavily are optional
+  upgrades, not requirements.
+- Postgres, pgvector and Redis all run locally through Docker.
+
+Point `FREELM_AI_PROVIDER` at any provider you like — OpenAI, Gemini,
+Anthropic, Ollama, LM Studio, vLLM, OpenRouter, Groq, Together, DeepSeek,
+Mistral, xAI — and only that provider's own pricing applies.
+
 ---
 
 ## Feature parity with Gemini Notebook
@@ -308,8 +344,36 @@ conversation.
 
 ---
 
-## How the grounding works
+## Motion
 
+Every surface in FreeLM animates from one shared motion system, so the whole
+app moves consistently. The web tokens live in `apps/web/src/lib/motion.ts` and
+the CSS keyframes in `apps/web/src/app/globals.css`; the mobile app mirrors
+them with React Native's `Animated` API in `apps/mobile/src/animations.ts`.
+
+| Surface | Animation |
+|---|---|
+| Modals | Backdrop fades, panel scales 0.96 → 1 and rises 8px, and **animates back out** on close |
+| Menus & popovers | Scale 0.94 → 1 with a 6px rise, exit reversed |
+| Toasts | Slide in from the right, fade out on dismiss |
+| Buttons | Material-style ripple from the pointer position, scale 0.97 on press |
+| Checkboxes | The tick **draws itself** with an SVG stroke animation |
+| Chat messages | Fade + 8px rise on arrival; a **blinking caret** while the answer streams |
+| Citation chips | Spring scale 1.09 on hover, 0.94 on press |
+| Sources | A travelling progress bar while ingestion runs |
+| Quiz ring | The completion ring fills from 0% to its score |
+| Flashcards | 3D flip on reveal (rotateY 180°) |
+| Mind map | Nodes lift on hover, and a branch opens a grounded chat |
+| Studio tools | Press scale, hover lift, outputs fade in as they appear |
+| Panels | Width animates when a pane is collapsed or dragged |
+| Empty states | Icons float gently |
+
+All of it collapses to near-zero under `prefers-reduced-motion`, and the
+mobile app has the same behaviour.
+
+---
+
+## How the grounding works
 FreeLM does not ask a model to "try to cite". It makes citing impossible to
 fake:
 

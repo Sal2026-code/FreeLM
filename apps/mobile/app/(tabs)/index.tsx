@@ -15,7 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import type { Notebook } from '@freelm/shared';
 
 import { api } from '../../src/api';
-import { Body, Button, Chip, Empty, Loader, Title } from '../../src/components/ui';
+import { Body, Button, Chip, Empty, FadeIn, Loader, Title } from '../../src/components/ui';
 import { colors, fontSize, radius, spacing } from '../../src/theme';
 
 type Scope = 'all' | 'mine' | 'featured';
@@ -130,32 +130,34 @@ export default function NotebooksScreen() {
               message="Create a notebook to start adding sources and asking questions."
             />
           }
-          renderItem={({ item }) => (
-            <Pressable
-              onPress={() => router.push(`/notebook/${item.id}`)}
-              style={({ pressed }) => [styles.card, pressed && { opacity: 0.75 }]}
-            >
-              <View style={styles.cardRow}>
-                <Text style={styles.icon}>{item.icon}</Text>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.cardTitle} numberOfLines={1}>
-                    {item.title}
-                  </Text>
-                  {item.description ? (
-                    <Body muted numberOfLines={2}>
-                      {item.description}
-                    </Body>
-                  ) : null}
-                  <Text style={styles.cardMeta}>
-                    {item.sourceCount}{' '}
-                    {item.sourceCount === 1 ? 'source' : 'sources'} ·{' '}
-                    {item.threadCount}{' '}
-                    {item.threadCount === 1 ? 'chat' : 'chats'}
-                  </Text>
+          renderItem={({ item, index }) => (
+            <FadeIn delay={Math.min(index, 8) * 45}>
+              <Pressable
+                onPress={() => router.push(`/notebook/${item.id}`)}
+                style={({ pressed }) => [styles.card, pressed && { opacity: 0.75 }]}
+              >
+                <View style={styles.cardRow}>
+                  <Text style={styles.icon}>{item.icon}</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.cardTitle} numberOfLines={1}>
+                      {item.title}
+                    </Text>
+                    {item.description ? (
+                      <Body muted numberOfLines={2}>
+                        {item.description}
+                      </Body>
+                    ) : null}
+                    <Text style={styles.cardMeta}>
+                      {item.sourceCount}{' '}
+                      {item.sourceCount === 1 ? 'source' : 'sources'} ·{' '}
+                      {item.threadCount}{' '}
+                      {item.threadCount === 1 ? 'chat' : 'chats'}
+                    </Text>
+                  </View>
+                  <Text style={styles.chevron}>›</Text>
                 </View>
-                <Text style={styles.chevron}>›</Text>
-              </View>
-            </Pressable>
+              </Pressable>
+            </FadeIn>
           )}
         />
       )}

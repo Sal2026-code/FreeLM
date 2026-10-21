@@ -108,8 +108,9 @@ export function StudioPane({
                 onClick={() => setModalTool(type)}
                 title={tool.description}
                 className={cn(
-                  'flex flex-col items-center gap-1 rounded-xl border border-hairline bg-surface-2 px-1.5 py-2.5',
-                  'text-center transition hover:border-hairline-strong hover:bg-surface-3',
+                  'press flex flex-col items-center gap-1 rounded-xl border border-hairline bg-surface-2 px-1.5 py-2.5',
+                  'text-center transition-colors duration-[--duration-short]',
+                  'hover:border-hairline-strong hover:bg-surface-3',
                   'disabled:cursor-not-allowed disabled:opacity-45',
                 )}
               >
@@ -144,8 +145,8 @@ export function StudioPane({
         ) : (
           <>
             {outputs.length === 0 && notes.length === 0 ? (
-              <div className="flex flex-col items-center gap-2 px-2 py-10 text-center">
-                <span className="material-symbols-rounded text-[26px] text-neutral-600">
+              <div className="anim-fade-in flex flex-col items-center gap-2 px-2 py-10 text-center">
+                <span className="anim-float material-symbols-rounded text-[26px] text-neutral-600">
                   edit_note
                 </span>
                 <p className="text-[13px] font-medium text-neutral-400">

@@ -490,13 +490,13 @@ export function Workspace({ notebookId }: WorkspaceProps) {
       >
         {/* Sources */}
         <section
-          className={`min-h-0 shrink-0 border-r border-hairline ${
+          className={`pane min-h-0 shrink-0 border-r border-hairline ${
             mobilePane === 'sources' ? 'flex w-full' : 'hidden lg:flex'
           }`}
           style={{ width: collapsedSources ? 0 : widths.sources }}
         >
           <div
-            className={`h-full overflow-hidden ${collapsedSources ? 'w-0' : 'w-full'}`}
+            className={`h-full overflow-hidden transition-[width] duration-[--duration-medium] ease-[var(--ease-standard)] ${collapsedSources ? 'w-0' : 'w-full'}`}
           >
             {sourcesPane}
           </div>
@@ -536,7 +536,7 @@ export function Workspace({ notebookId }: WorkspaceProps) {
 
         {/* Studio */}
         <section
-          className={`min-h-0 shrink-0 border-l border-hairline ${
+          className={`pane min-h-0 shrink-0 border-l border-hairline ${
             mobilePane === 'studio' ? 'flex w-full' : 'hidden lg:flex'
           }`}
           style={{ width: collapsedStudio ? 0 : widths.studio }}

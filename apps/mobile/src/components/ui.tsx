@@ -2,19 +2,105 @@
  * FreeLM — mobile UI kit.
  */
 
-import { type ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import {
   ActivityIndicator,
+  Animated,
   Pressable,
   StyleSheet,
   Text,
   TextInput,
   View,
+  type StyleProp,
   type TextInputProps,
   type ViewStyle,
 } from 'react-native';
 
+import { enterTiming, pressTiming } from '../animations';
 import { colors, fontSize, radius, spacing } from '../theme';
+
+// ---------------------------------------------------------------------------
+// Motion helpers
+// ---------------------------------------------------------------------------
+
+/** Fade and rise into view. */
+export function FadeIn({
+  children,
+  delay = 0,
+  offset = 10,
+  style,
+}: {
+  children: ReactNode;
+  delay?: number;
+  offset?: number;
+  style?: StyleProp<ViewStyle>;
+}) {
+  const progress = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const animation = Animated.timing(progress, { ...enterTiming(1), delay });
+    animation.start();
+    return () => animation.stop();
+  }, [progress, delay]);
+
+  return (
+    <Animated.View
+      style={[
+        {
+          opacity: progress,
+          transform: [
+            {
+              translateY: progress.interpolate({
+                inputRange: [0, 1],
+                outputRange: [offset, 0],
+              }),
+            },
+          ],
+        },
+        style,
+      ]}
+    >
+      {children}
+    </Animated.View>
+  );
+}
+
+/** A pressable that scales down slightly while held. */
+export function Touchable({
+  children,
+  onPress,
+  style,
+  disabled,
+  scaleTo = 0.97,
+  accessibilityLabel,
+}: {
+  children: ReactNode;
+  onPress?: () => void;
+  style?: StyleProp<ViewStyle>;
+  disabled?: boolean;
+  scaleTo?: number;
+  accessibilityLabel?: string;
+}) {
+  const scale = useRef(new Animated.Value(1)).current;
+
+  const animate = (to: number) => {
+    Animated.timing(scale, pressTiming(to)).start();
+  };
+
+  return (
+    <Pressable
+      onPress={onPress}
+      onPressIn={() => animate(scaleTo)}
+      onPressOut={() => animate(1)}
+      disabled={disabled}
+      accessibilityLabel={accessibilityLabel}
+    >
+      <Animated.View style={[{ transform: [{ scale }] }, style]}>
+        {children}
+      </Animated.View>
+    </Pressable>
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Text
@@ -68,26 +154,31 @@ export function Button({
   disabled?: boolean;
   loading?: boolean;
   small?: boolean;
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
 }) {
   const palette = {
     primary: { bg: colors.accent, fg: '#ffffff', border: 'transparent' },
     secondary: { bg: colors.surface2, fg: colors.text, border: colors.hairline },
     ghost: { bg: 'transparent', fg: colors.textMuted, border: 'transparent' },
-    danger: { bg: 'rgba(242,139,130,0.12)', fg: colors.danger, border: 'rgba(242,139,130,0.35)' },
+    danger: {
+      bg: 'rgba(242,139,130,0.12)',
+      fg: colors.danger,
+      border: 'rgba(242,139,130,0.35)',
+    },
   }[variant];
 
   return (
-    <Pressable
+    <Touchable
       onPress={onPress}
       disabled={disabled || loading}
-      style={({ pressed }) => [
+      accessibilityLabel={label}
+      style={[
         styles.button,
         small && styles.buttonSmall,
         {
           backgroundColor: palette.bg,
           borderColor: palette.border,
-          opacity: disabled ? 0.45 : pressed ? 0.75 : 1,
+          opacity: disabled ? 0.45 : 1,
         },
         style,
       ]}
@@ -105,7 +196,7 @@ export function Button({
           {label}
         </Text>
       )}
-    </Pressable>
+    </Touchable>
   );
 }
 
@@ -118,7 +209,7 @@ export function Card({
   style,
 }: {
   children: ReactNode;
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
 }) {
   return <View style={[styles.card, style]}>{children}</View>;
 }
@@ -132,27 +223,23 @@ export function Chip({
   label: string;
   onPress?: () => void;
   selected?: boolean;
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
 }) {
   return (
-    <Pressable
+    <Touchable
       onPress={onPress}
-      style={({ pressed }) => [
+      scaleTo={0.94}
+      accessibilityLabel={label}
+      style={[
         styles.chip,
         selected && { backgroundColor: colors.accentSoft, borderColor: colors.accent },
-        pressed && { opacity: 0.7 },
         style,
       ]}
     >
-      <Text
-        style={[
-          styles.chipLabel,
-          selected && { color: colors.accent },
-        ]}
-      >
+      <Text style={[styles.chipLabel, selected && { color: colors.accent }]}>
         {label}
       </Text>
-    </Pressable>
+    </Touchable>
   );
 }
 
@@ -170,20 +257,17 @@ export function Segmented<T extends string>({
       {options.map((option) => {
         const active = option.value === value;
         return (
-          <Pressable
+          <Touchable
             key={option.value}
             onPress={() => onChange(option.value)}
+            scaleTo={0.97}
+            accessibilityLabel={option.label}
             style={[styles.segment, active && styles.segmentActive]}
           >
-            <Text
-              style={[
-                styles.segmentLabel,
-                active && { color: colors.text },
-              ]}
-            >
+            <Text style={[styles.segmentLabel, active && { color: colors.text }]}>
               {option.label}
             </Text>
-          </Pressable>
+          </Touchable>
         );
       })}
     </View>
@@ -230,22 +314,24 @@ export function Banner({
   }[tone];
 
   return (
-    <View
-      style={[
-        styles.banner,
-        { borderColor: accent, backgroundColor: `${accent}18` },
-      ]}
-    >
-      <View style={{ flex: 1 }}>
-        <Text style={[styles.bannerTitle, { color: accent }]}>{title}</Text>
-        {message ? <Text style={styles.bannerMessage}>{message}</Text> : null}
+    <FadeIn>
+      <View
+        style={[
+          styles.banner,
+          { borderColor: accent, backgroundColor: `${accent}18` },
+        ]}
+      >
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.bannerTitle, { color: accent }]}>{title}</Text>
+          {message ? <Text style={styles.bannerMessage}>{message}</Text> : null}
+        </View>
+        {onRetry ? (
+          <Touchable onPress={onRetry} accessibilityLabel="Retry">
+            <Text style={{ color: accent, fontWeight: '600' }}>Retry</Text>
+          </Touchable>
+        ) : null}
       </View>
-      {onRetry ? (
-        <Pressable onPress={onRetry} style={styles.bannerAction}>
-          <Text style={{ color: accent, fontWeight: '600' }}>Retry</Text>
-        </Pressable>
-      ) : null}
-    </View>
+    </FadeIn>
   );
 }
 
@@ -259,24 +345,28 @@ export function Empty({
   message: string;
 }) {
   return (
-    <View style={styles.empty}>
-      <Text style={{ fontSize: 30, marginBottom: spacing.sm }}>{icon}</Text>
-      <Text style={[styles.body, { color: colors.text, fontWeight: '600' }]}>
-        {title}
-      </Text>
-      <Text style={[styles.bodyMuted, { textAlign: 'center', marginTop: 4 }]}>
-        {message}
-      </Text>
-    </View>
+    <FadeIn>
+      <View style={styles.empty}>
+        <Text style={{ fontSize: 30, marginBottom: spacing.sm }}>{icon}</Text>
+        <Text style={[styles.body, { color: colors.text, fontWeight: '600' }]}>
+          {title}
+        </Text>
+        <Text style={[styles.bodyMuted, { textAlign: 'center', marginTop: 4 }]}>
+          {message}
+        </Text>
+      </View>
+    </FadeIn>
   );
 }
 
 export function Loader({ label }: { label?: string }) {
   return (
-    <View style={styles.loader}>
-      <ActivityIndicator color={colors.accent} />
-      {label ? <Text style={styles.bodyMuted}>{label}</Text> : null}
-    </View>
+    <FadeIn>
+      <View style={styles.loader}>
+        <ActivityIndicator color={colors.accent} />
+        {label ? <Text style={styles.bodyMuted}>{label}</Text> : null}
+      </View>
+    </FadeIn>
   );
 }
 
@@ -397,10 +487,6 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     marginTop: 2,
   },
-  bannerAction: {
-    paddingLeft: spacing.md,
-    paddingTop: 2,
-  },
   empty: {
     alignItems: 'center',
     paddingHorizontal: spacing.xl,
@@ -414,3 +500,4 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
   },
 });
+

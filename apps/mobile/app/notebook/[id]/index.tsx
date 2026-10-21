@@ -20,7 +20,7 @@ import { CHAT_MODES } from '@freelm/shared';
 
 import { streamChat } from '../../../src/api';
 import { Markdown } from '../../../src/components/Markdown';
-import { Banner, Chip, Empty, Loader } from '../../../src/components/ui';
+import { Banner, Chip, Empty, FadeIn, Loader } from '../../../src/components/ui';
 import { useNotebook } from '../../../src/notebook-context';
 import { colors, fontSize, radius, spacing } from '../../../src/theme';
 
@@ -248,20 +248,24 @@ export default function ChatScreen() {
               />
             )
           }
-          renderItem={({ item }) => (
-            <View
-              style={item.role === 'user' ? styles.userBubble : styles.assistantBubble}
-            >
-              {item.role === 'assistant' ? (
-                <Markdown
-                  content={item.content}
-                  citations={item.citations}
-                  onCitationClick={() => router.push('/notebook/' + notebookId)}
-                />
-              ) : (
-                <Text style={styles.userText}>{item.content}</Text>
-              )}
-            </View>
+          renderItem={({ item, index }) => (
+            <FadeIn delay={Math.min(index, 8) * 40}>
+              <View
+                style={
+                  item.role === 'user' ? styles.userBubble : styles.assistantBubble
+                }
+              >
+                {item.role === 'assistant' ? (
+                  <Markdown
+                    content={item.content}
+                    citations={item.citations}
+                    onCitationClick={() => router.push('/notebook/' + notebookId)}
+                  />
+                ) : (
+                  <Text style={styles.userText}>{item.content}</Text>
+                )}
+              </View>
+            </FadeIn>
           )}
         />
 

@@ -807,25 +807,29 @@ function FlashcardViewer({
         <IconButton icon="shuffle" label="Shuffle" onClick={shuffle} />
       </div>
 
-      <button
-        type="button"
-        onClick={() => setRevealed((value) => !value)}
-        className={cn(
-          'w-full rounded-2xl border border-hairline bg-surface-2 p-5 text-left transition',
-          'hover:border-hairline-strong',
-        )}
-      >
-        <p className="text-[14px] font-medium leading-6 text-neutral-50">
-          {current.question}
-        </p>
-        {revealed ? (
-          <p className="mt-3 border-t border-hairline pt-3 text-[13.5px] leading-6 text-neutral-200">
-            {current.answer}
+      <div className="card-flip w-full" style={{ perspective: '1200px' }}>
+        <button
+          type="button"
+          onClick={() => setRevealed((value) => !value)}
+          className={cn(
+            'press w-full rounded-2xl border border-hairline bg-surface-2 p-5 text-left',
+            'hover:border-hairline-strong',
+            revealed && 'card-flip-revealed',
+          )}
+          style={{ backfaceVisibility: 'hidden' }}
+        >
+          <p className="text-[14px] font-medium leading-6 text-neutral-50">
+            {current.question}
           </p>
-        ) : (
-          <p className="mt-3 text-[12px] text-neutral-500">Tap to reveal</p>
-        )}
-      </button>
+          {revealed ? (
+            <p className="mt-3 border-t border-hairline pt-3 text-[13.5px] leading-6 text-neutral-200">
+              {current.answer}
+            </p>
+          ) : (
+            <p className="mt-3 text-[12px] text-neutral-500">Tap to reveal</p>
+          )}
+        </button>
+      </div>
 
       <div className="flex items-center justify-center gap-3">
         <IconButton
@@ -900,7 +904,7 @@ function MindMapViewer({ root }: { root: MindMapNode }) {
             {root.children.map((child, childIndex) => {
               const childY = 40 + childIndex * 46;
               return (
-                <g key={child.id}>
+                <g key={child.id} className="mind-node">
                   <rect
                     x="240"
                     y={childY}

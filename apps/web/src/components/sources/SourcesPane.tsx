@@ -308,8 +308,8 @@ export function SourcesPane({
             onChanged={() => void onChanged()}
           />
         ) : sources.length === 0 ? (
-          <div className="flex flex-col items-center gap-2 px-4 py-10 text-center">
-            <span className="material-symbols-rounded text-[26px] text-neutral-600">
+          <div className="anim-fade-in flex flex-col items-center gap-2 px-4 py-10 text-center">
+            <span className="anim-float material-symbols-rounded text-[26px] text-neutral-600">
               description
             </span>
             <p className="text-[13px] font-medium text-neutral-400">
@@ -331,8 +331,8 @@ export function SourcesPane({
                 <li key={source.id}>
                   <div
                     className={cn(
-                      'group flex items-center gap-2 rounded-lg px-2 py-1.5 transition',
-                      'hover:bg-surface-2',
+                      'group relative flex items-center gap-2 rounded-lg px-2 py-1.5',
+                      'transition-colors duration-[--duration-short] hover:bg-surface-2',
                     )}
                   >
                     <button
@@ -364,6 +364,13 @@ export function SourcesPane({
                       <span className="flex shrink-0 items-center gap-1 text-[11px] text-neutral-500">
                         <Spinner size={11} />
                         {SOURCE_STATUS_LABEL[source.status]}
+                      </span>
+                    ) : null}
+
+                    {/* A travelling bar shows that ingestion is still running. */}
+                    {busy ? (
+                      <span className="progress-track absolute inset-x-0 bottom-0">
+                        <span className="progress-indeterminate absolute inset-0" />
                       </span>
                     ) : null}
 
