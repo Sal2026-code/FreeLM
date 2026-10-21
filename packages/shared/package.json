@@ -1,0 +1,18 @@
+{
+  "name": "@freelm/shared",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Shared types, API client, citation parser and language registry for FreeLM.",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json --noEmit",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "5.6.3"
+  }
+}

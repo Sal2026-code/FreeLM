@@ -1,0 +1,36 @@
+{
+  "name": "FreeLM",
+  "short_name": "FreeLM",
+  "description": "An open-source, unrestricted research and study assistant. Add sources, ask grounded questions with citations, and generate studio artifacts.",
+  "start_url": "/app",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0b0b0c",
+  "theme_color": "#0b0b0c",
+  "categories": ["productivity", "education", "utilities"],
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-maskable.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "My notebooks",
+      "url": "/app"
+    },
+    {
+      "name": "Settings",
+      "url": "/app/settings"
+    }
+  ]
+}

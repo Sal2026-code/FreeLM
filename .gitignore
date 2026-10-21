@@ -1,0 +1,41 @@
+# dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# builds
+.next/
+out/
+build/
+dist/
+web-build/
+*.tsbuildinfo
+apps/mobile/.expo/
+apps/mobile/.expo-shared/
+apps/mobile/android/
+apps/mobile/ios/
+apps/mobile/dist/
+
+# env & secrets
+.env
+.env.local
+.env*.local
+
+# runtime data
+storage/
+*.sqlite
+*.db
+
+# logs
+*.log
+npm-debug.log*
+yarn-error.log*
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# reference material (licensed PDFs — not part of the project)
+*.pdf

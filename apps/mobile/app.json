@@ -1,0 +1,53 @@
+{
+  "expo": {
+    "name": "FreeLM",
+    "slug": "freelm",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "freelm",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0b0b0c"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.freelm.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "FreeLM uses the camera to scan handwritten notes and worksheets into your notebooks.",
+        "NSMicrophoneUsageDescription": "FreeLM uses the microphone to record lectures and voice notes.",
+        "NSSpeechRecognitionUsageDescription": "FreeLM uses speech recognition so you can talk to your notebook."
+      }
+    },
+    "android": {
+      "package": "com.freelm.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0b0b0c"
+      },
+      "permissions": ["CAMERA", "RECORD_AUDIO"],
+      "edgeToEdgeEnabled": true
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-av",
+        {
+          "microphonePermission": "FreeLM uses the microphone to record lectures and voice notes."
+        }
+      ],
+      "expo-splash-screen"
+    ],
+    "extra": {
+      "freelmApiUrl": "http://localhost:3000"
+    }
+  }
+}

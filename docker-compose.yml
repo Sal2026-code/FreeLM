@@ -1,0 +1,46 @@
+# FreeLM — local infrastructure
+#
+#   docker compose up -d      start Postgres (pgvector) + Redis
+#   docker compose down       stop
+#   docker compose logs -f    tail logs
+#
+# FreeLM is 100% free to run: no paid services, no API keys required for
+# the core experience (an LLM key is needed for chat/embeddings/TTS).
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: freelm-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: freelm
+    ports:
+      - "5432:5432"
+    volumes:
+      - freelm-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d freelm"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    container_name: freelm-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory-policy", "noeviction"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - freelm-redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  freelm-pgdata:
+  freelm-redisdata:
