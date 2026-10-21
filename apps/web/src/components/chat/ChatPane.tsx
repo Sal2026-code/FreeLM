@@ -481,27 +481,42 @@ export function ChatPane({
           ) : null}
 
           <div className="space-y-5">
-            {messages.map((message) => (
-              <MessageBubble
-                key={message.id}
-                message={message}
-                onCitationClick={(chunkId, sourceId) => {
-                  setHighlightChunkId(chunkId);
-                  window.dispatchEvent(
-                    new CustomEvent('freelm:open-source', {
-                      detail: { chunkId, sourceId },
-                    }),
-                  );
-                }}
-                onSavedToNote={onSavedToNote}
-                onSendToChat={onSendToChat}
-              />
-            ))}
+            {messages.map((message, messageIndex) => {
+              const isLast = messageIndex === messages.length - 1;
+              const isStreaming =
+                sending && isLast && message.role === 'assistant';
+              return (
+                <MessageBubble
+                  key={message.id}
+                  message={message}
+                  streaming={isStreaming}
+                  onCitationClick={(chunkId, sourceId) => {
+                    setHighlightChunkId(chunkId);
+                    window.dispatchEvent(
+                      new CustomEvent('freelm:open-source', {
+                        detail: { chunkId, sourceId },
+                      }),
+                    );
+                  }}
+                  onSavedToNote={onSavedToNote}
+                  onSendToChat={onSendToChat}
+                />
+              );
+            })}
           </div>
 
           {sending ? (
-            <div className="mt-4 flex items-center gap-2 text-[13px] text-neutral-500">
-              <Spinner size={13} /> Thinking…
+            <div className="anim-fade-in mt-4 flex items-center gap-2 text-[13px] text-neutral-500">
+              <span className="flex gap-1" aria-hidden>
+                {[0, 1, 2].map((dot) => (
+                  <span
+                    key={dot}
+                    className="anim-float h-1.5 w-1.5 rounded-full bg-neutral-500"
+                    style={{ animationDelay: `${dot * 140}ms` }}
+                  />
+                ))}
+              </span>
+              Thinking…
             </div>
           ) : null}
         </div>
@@ -601,11 +616,13 @@ export function ChatPane({
 
 function MessageBubble({
   message,
+  streaming,
   onCitationClick,
   onSavedToNote,
   onSendToChat,
 }: {
   message: Message;
+  streaming?: boolean;
   onCitationClick: (chunkId: string, sourceId: string) => void;
   onSavedToNote: () => void;
   onSendToChat: (content: string) => void | Promise<void>;
@@ -617,7 +634,7 @@ function MessageBubble({
   if (message.role === 'user') {
     return (
       <div className="flex justify-end">
-        <div className="max-w-[85%] rounded-2xl rounded-br-md bg-surface-2 px-3.5 py-2.5 text-[14px] leading-6 text-neutral-100">
+        <div className="anim-message-in max-w-[85%] rounded-2xl rounded-br-md bg-surface-2 px-3.5 py-2.5 text-[14px] leading-6 text-neutral-100">
           {message.content}
         </div>
       </div>
@@ -652,7 +669,7 @@ function MessageBubble({
   }, [message.citations]);
 
   return (
-    <article className="group">
+    <article className="group anim-message-in">
       <MarkdownRenderer
         content={message.content}
         citations={message.citations}
@@ -661,6 +678,11 @@ function MessageBubble({
           onCitationClick(chunkId, citation?.sourceId ?? '');
         }}
       />
+
+      {/* A blinking caret while the answer is still streaming in. */}
+      {streaming ? (
+        <span className="caret text-neutral-400" aria-hidden />
+      ) : null}
 
       <div className="mt-2.5 flex items-center gap-1.5">
         <Button

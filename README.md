@@ -225,6 +225,20 @@ full list.
 | `FREELM_GOOGLE_CLIENT_ID` / `_SECRET` | — | Optional: enables Google sign-in and Drive import |
 | `FREELM_STORAGE_DRIVER` | `local` | `local` or `s3` |
 
+### Running with no API key at all
+
+FreeLM can run completely keyless:
+
+| Capability | Keyless backend |
+|---|---|
+| **Retrieval / embeddings** | `local-hash-v1` — a built-in hashing-vectoriser. Real lexical similarity, no network call, no API key. |
+| **Audio Overviews** | The keyless `edge` TTS backend — two distinct voices per language, 100+ languages. |
+| **Web research** | DuckDuckGo HTML search. |
+
+You still need a chat model for answers, but anything OpenAI-compatible works —
+including free local models via Ollama or LM Studio, and free hosted models
+such as OpenRouter's `:free` tier.
+
 ---
 
 ## Repository layout

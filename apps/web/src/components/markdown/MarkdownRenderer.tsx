@@ -93,10 +93,10 @@ export function CitationChip({
         onClick?.(chunkId);
       }}
       className={cn(
-        'mx-0.5 inline-flex h-[18px] min-w-[18px] translate-y-[-1px] items-center justify-center',
+        'citation-chip mx-0.5 inline-flex h-[18px] min-w-[18px] translate-y-[-1px] items-center justify-center',
         'rounded-[5px] border border-hairline bg-surface-3 px-1 align-middle',
         'font-mono text-[10.5px] leading-none text-neutral-300',
-        'transition hover:border-accent hover:bg-accent/20 hover:text-accent',
+        'hover:border-accent hover:bg-accent/20 hover:text-accent',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50',
       )}
     >

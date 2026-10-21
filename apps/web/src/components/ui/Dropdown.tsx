@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from 'react';
 
+import { usePresence } from '@/hooks/usePresence';
 import { cn } from './primitives';
 
 // ---------------------------------------------------------------------------
@@ -41,6 +42,7 @@ export function Dropdown({
   label,
 }: DropdownProps) {
   const [open, setOpen] = useState(false);
+  const { mounted, state } = usePresence(open, 150);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -67,17 +69,18 @@ export function Dropdown({
         aria-expanded={open}
         aria-label={label}
         onClick={() => setOpen((value) => !value)}
-        className="inline-flex"
+        className="inline-flex press"
       >
         {trigger}
       </button>
-      {open ? (
+      {mounted ? (
         <div
           role="menu"
           className={cn(
-            'absolute z-50 mt-1 min-w-[11rem] animate-fade-in overflow-hidden rounded-xl',
+            'absolute z-50 mt-1 min-w-[11rem] overflow-hidden rounded-xl',
             'border border-hairline bg-surface-2 py-1 shadow-panel',
             align === 'end' ? 'right-0' : 'left-0',
+            state === 'enter' ? 'anim-pop-in' : 'anim-pop-out',
             className,
           )}
         >
@@ -96,6 +99,7 @@ export function Dropdown({
                 }}
                 className={cn(
                   'flex w-full items-center gap-2.5 px-3 py-2 text-left text-[13px] transition',
+                  'duration-[--duration-micro]',
                   item.disabled
                     ? 'cursor-not-allowed text-neutral-600'
                     : item.destructive
@@ -140,6 +144,7 @@ export function Popover({
   panelWidth = 'w-80',
 }: PopoverProps) {
   const [open, setOpen] = useState(false);
+  const { mounted, state } = usePresence(open, 150);
   const containerRef = useRef<HTMLDivElement>(null);
   const id = useId();
 
@@ -176,19 +181,20 @@ export function Popover({
         aria-controls={id}
         aria-label={label}
         onClick={() => setOpen((value) => !value)}
-        className="inline-flex"
+        className="inline-flex press"
       >
         {trigger}
       </button>
-      {open ? (
+      {mounted ? (
         <div
           id={id}
           role="dialog"
           className={cn(
-            'absolute top-full z-50 mt-2 animate-fade-in rounded-xl border border-hairline',
+            'absolute top-full z-50 mt-2 rounded-xl border border-hairline',
             'bg-surface-2 p-3 shadow-panel',
             alignment[align],
             panelWidth,
+            state === 'enter' ? 'anim-pop-in' : 'anim-pop-out',
             className,
           )}
         >

@@ -3,6 +3,7 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 
+import { usePresence } from '@/hooks/usePresence';
 import { cn } from './primitives';
 
 export interface ModalProps {
@@ -20,6 +21,9 @@ export interface ModalProps {
 
 /**
  * A centered, dark modal — the pattern used by every "Customize …" dialog.
+ *
+ * The panel scales and fades in, and animates back out on close, so the
+ * dismissal reads as a reversal rather than a cut.
  */
 export function Modal({
   open,
@@ -31,6 +35,7 @@ export function Modal({
   width = 'max-w-2xl',
   persistent,
 }: ModalProps) {
+  const { mounted, state } = usePresence(open, 200);
   const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -52,7 +57,9 @@ export function Modal({
     };
   }, [open, onClose, persistent]);
 
-  if (!open || typeof document === 'undefined') return null;
+  if (!mounted || typeof document === 'undefined') return null;
+
+  const entering = state === 'enter';
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4 sm:p-8">
@@ -60,7 +67,10 @@ export function Modal({
         type="button"
         aria-label="Close dialog"
         onClick={() => (persistent ? undefined : onClose())}
-        className="fixed inset-0 cursor-default bg-black/70 backdrop-blur-sm"
+        className={cn(
+          'fixed inset-0 cursor-default bg-black/70 backdrop-blur-sm',
+          entering ? 'anim-fade-in' : 'anim-fade-out',
+        )}
         tabIndex={-1}
       />
       <div
@@ -69,8 +79,9 @@ export function Modal({
         aria-modal="true"
         tabIndex={-1}
         className={cn(
-          'relative z-10 my-auto w-full animate-fade-in rounded-panel border border-hairline',
+          'relative z-10 my-auto w-full rounded-panel border border-hairline',
           'bg-surface shadow-panel outline-none',
+          entering ? 'anim-scale-in' : 'anim-scale-out',
           width,
         )}
       >
@@ -88,7 +99,7 @@ export function Modal({
               type="button"
               onClick={onClose}
               aria-label="Close"
-              className="icon-button -mr-1 -mt-1"
+              className="icon-button press -mr-1 -mt-1"
             >
               <span className="material-symbols-rounded text-[20px]" aria-hidden>
                 close
@@ -141,7 +152,7 @@ export function ConfirmDialog({
           <button
             type="button"
             onClick={onClose}
-            className="inline-flex h-9 items-center rounded-pill border border-hairline bg-surface-2 px-4 text-sm text-neutral-200 transition hover:bg-surface-3"
+            className="press inline-flex h-9 items-center rounded-pill border border-hairline bg-surface-2 px-4 text-sm text-neutral-200 transition hover:bg-surface-3"
           >
             Cancel
           </button>
@@ -152,7 +163,7 @@ export function ConfirmDialog({
               onClose();
             }}
             className={cn(
-              'inline-flex h-9 items-center rounded-pill px-4 text-sm font-medium text-white transition',
+              'press inline-flex h-9 items-center rounded-pill px-4 text-sm font-medium text-white transition',
               destructive
                 ? 'bg-danger/80 hover:bg-danger'
                 : 'bg-accent hover:bg-accent-hover',

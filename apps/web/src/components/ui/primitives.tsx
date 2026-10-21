@@ -59,15 +59,42 @@ export function Button({
   className,
   children,
   disabled,
+  onClick,
   ...rest
 }: ButtonProps) {
+  const [ripples, setRipples] = useState<
+    { id: number; x: number; y: number; size: number }[]
+  >([]);
+
+  const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+    // A Material-style ripple that starts where the pointer went down.
+    const rect = event.currentTarget.getBoundingClientRect();
+    const size = Math.max(rect.width, rect.height);
+    const id = Date.now() + Math.random();
+    setRipples((current) => [
+      ...current,
+      {
+        id,
+        x: event.clientX - rect.left - size / 2,
+        y: event.clientY - rect.top - size / 2,
+        size,
+      },
+    ]);
+    window.setTimeout(() => {
+      setRipples((current) => current.filter((ripple) => ripple.id !== id));
+    }, 520);
+    onClick?.(event);
+  };
+
   return (
     <button
       type="button"
       disabled={disabled || loading}
+      onClick={handleClick}
       className={cn(
-        'inline-flex select-none items-center justify-center rounded-pill font-medium',
-        'transition-colors duration-150',
+        'ripple-host press relative inline-flex select-none items-center justify-center',
+        'rounded-pill font-medium',
+        'transition-colors duration-[--duration-short]',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50',
         'disabled:pointer-events-none disabled:opacity-45',
         BUTTON_VARIANTS[variant],
@@ -77,6 +104,18 @@ export function Button({
       )}
       {...rest}
     >
+      {ripples.map((ripple) => (
+        <span
+          key={ripple.id}
+          className="ripple-dot"
+          style={{
+            left: ripple.x,
+            top: ripple.y,
+            width: ripple.size,
+            height: ripple.size,
+          }}
+        />
+      ))}
       {loading ? (
         <Spinner size={size === 'lg' ? 16 : 14} />
       ) : icon ? (
@@ -117,7 +156,7 @@ export function IconButton({
       title={label}
       className={cn(
         'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full',
-        'transition-colors duration-150',
+        'transition-colors duration-[--duration-short]',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50',
         'disabled:pointer-events-none disabled:opacity-40',
         active
@@ -149,10 +188,7 @@ export function IconButton({
 export function Spinner({ size = 16, className }: { size?: number; className?: string }) {
   return (
     <span
-      className={cn(
-        'inline-block animate-spin rounded-full border-2 border-current border-t-transparent',
-        className,
-      )}
+      className={cn('anim-spin inline-block rounded-full border-2 border-current border-t-transparent', className)}
       style={{ width: size, height: size }}
       role="status"
       aria-label="Loading"
@@ -195,7 +231,8 @@ export function Checkbox({
     >
       <span
         className={cn(
-          'flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[5px] border transition',
+          'flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[5px] border transition-all',
+          'duration-[--duration-short]',
           checked || indeterminate
             ? 'border-accent bg-accent text-white'
             : 'border-hairline-strong bg-surface-2 hover:border-neutral-500',
@@ -206,9 +243,18 @@ export function Checkbox({
             horizontal_rule
           </span>
         ) : checked ? (
-          <span className="material-symbols-rounded text-[14px]" aria-hidden>
-            check
-          </span>
+          <svg
+            viewBox="0 0 24 24"
+            className="h-3.5 w-3.5"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="3"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden
+          >
+            <path className="check-draw" d="M4 12.5 9 17.5 20 6.5" />
+          </svg>
         ) : null}
       </span>
       {label ? <span className="text-sm text-neutral-300">{label}</span> : null}
@@ -459,15 +505,26 @@ export function useToast(): ToastContextValue {
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
+  const [leaving, setLeaving] = useState<Set<string>>(new Set());
   const counter = useRef(0);
+
+  const dismiss = (id: string) => {
+    setLeaving((current) => new Set(current).add(id));
+    window.setTimeout(() => {
+      setToasts((current) => current.filter((item) => item.id !== id));
+      setLeaving((current) => {
+        const next = new Set(current);
+        next.delete(id);
+        return next;
+      });
+    }, 200);
+  };
 
   const push = (toast: Omit<ToastMessage, 'id'>) => {
     counter.current += 1;
     const id = `toast-${counter.current}`;
     setToasts((current) => [...current, { ...toast, id }]);
-    window.setTimeout(() => {
-      setToasts((current) => current.filter((item) => item.id !== id));
-    }, 6000);
+    window.setTimeout(() => dismiss(id), 6000);
   };
 
   const tones = {
@@ -481,78 +538,76 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     <ToastContext.Provider value={{ push }}>
       {children}
       <div className="pointer-events-none fixed bottom-4 right-4 z-[100] flex w-[min(26rem,calc(100vw-2rem))] flex-col gap-2">
-        {toasts.map((toast) => (
-          <div
-            key={toast.id}
-            role="status"
-            className={cn(
-              'pointer-events-auto animate-fade-in rounded-xl border bg-surface-2 p-3 shadow-panel',
-              tones[toast.tone],
-            )}
-          >
-            <div className="flex items-start gap-2">
-              <span
-                className={cn(
-                  'material-symbols-rounded mt-0.5 text-[18px]',
-                  toast.tone === 'error'
-                    ? 'text-danger'
+        {toasts.map((toast) => {
+          const isLeaving = leaving.has(toast.id);
+          return (
+            <div
+              key={toast.id}
+              role="status"
+              className={cn(
+                'pointer-events-auto rounded-xl border bg-surface-2 p-3 shadow-panel',
+                tones[toast.tone],
+                isLeaving ? 'anim-fade-out' : 'anim-slide-in-right',
+              )}
+            >
+              <div className="flex items-start gap-2">
+                <span
+                  className={cn(
+                    'material-symbols-rounded mt-0.5 text-[18px]',
+                    toast.tone === 'error'
+                      ? 'text-danger'
+                      : toast.tone === 'success'
+                        ? 'text-success'
+                        : toast.tone === 'warning'
+                          ? 'text-warning'
+                          : 'text-accent',
+                  )}
+                  aria-hidden
+                >
+                  {toast.tone === 'error'
+                    ? 'error'
                     : toast.tone === 'success'
-                      ? 'text-success'
+                      ? 'check_circle'
                       : toast.tone === 'warning'
-                        ? 'text-warning'
-                        : 'text-accent',
-                )}
-                aria-hidden
-              >
-                {toast.tone === 'error'
-                  ? 'error'
-                  : toast.tone === 'success'
-                    ? 'check_circle'
-                    : toast.tone === 'warning'
-                      ? 'warning'
-                      : 'info'}
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-neutral-100">
-                  {toast.title}
-                </p>
-                {toast.description ? (
-                  <p className="mt-0.5 text-[13px] text-neutral-400">
-                    {toast.description}
-                  </p>
-                ) : null}
-                {toast.action ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      toast.action?.onClick();
-                      setToasts((current) =>
-                        current.filter((item) => item.id !== toast.id),
-                      );
-                    }}
-                    className="mt-2 text-[13px] font-medium text-accent hover:text-accent-hover"
-                  >
-                    {toast.action.label}
-                  </button>
-                ) : null}
-              </div>
-              <button
-                type="button"
-                aria-label="Dismiss"
-                onClick={() =>
-                  setToasts((current) =>
-                    current.filter((item) => item.id !== toast.id),
-                  )
-                }
-                className="icon-button -mr-1 -mt-1 h-6 w-6"
-              >
-                <span className="material-symbols-rounded text-[16px]" aria-hidden>
-                  close
+                        ? 'warning'
+                        : 'info'}
                 </span>
-              </button>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-neutral-100">
+                    {toast.title}
+                  </p>
+                  {toast.description ? (
+                    <p className="mt-0.5 text-[13px] text-neutral-400">
+                      {toast.description}
+                    </p>
+                  ) : null}
+                  {toast.action ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        toast.action?.onClick();
+                        dismiss(toast.id);
+                      }}
+                      className="mt-2 text-[13px] font-medium text-accent hover:text-accent-hover"
+                    >
+                      {toast.action.label}
+                    </button>
+                  ) : null}
+                </div>
+                <button
+                  type="button"
+                  aria-label="Dismiss"
+                  onClick={() => dismiss(toast.id)}
+                  className="icon-button press -mr-1 -mt-1 h-6 w-6"
+                >
+                  <span className="material-symbols-rounded text-[16px]" aria-hidden>
+                    close
+                  </span>
+                </button>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </ToastContext.Provider>
   );
