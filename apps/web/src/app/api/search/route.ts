@@ -6,7 +6,7 @@
  * Searches notebooks, sources and notes the caller can reach.
  */
 
-import { and, eq, ilike, or, sql } from 'drizzle-orm';
+import { and, eq, ilike, or } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 
 import { db, schema } from '@/lib/db';
@@ -24,6 +24,19 @@ export async function GET(request: Request): Promise<NextResponse> {
 
     const pattern = `%${query}%`;
 
+    // A notebook belongs to the caller when it is on their account, or when
+    // it was created by their session. A guest session only ever owns the
+    // notebooks it created — matching a null owner would leak other guests'
+    // notebooks, so it is deliberately not used.
+    const ownsNotebook = (
+      session.userId
+        ? or(
+            eq(schema.notebooks.ownerUserId, session.userId),
+            eq(schema.notebooks.sessionId, session.id),
+          )
+        : eq(schema.notebooks.sessionId, session.id)
+    )!;
+
     const notebookRows = await db
       .select({
         id: schema.notebooks.id,
@@ -31,15 +44,7 @@ export async function GET(request: Request): Promise<NextResponse> {
         icon: schema.notebooks.icon,
       })
       .from(schema.notebooks)
-      .where(
-        and(
-          or(
-            eq(schema.notebooks.ownerUserId, session.userId ?? '__none__'),
-            eq(schema.notebooks.sessionId, session.id),
-          ),
-          ilike(schema.notebooks.title, pattern),
-        ),
-      )
+      .where(and(ownsNotebook, ilike(schema.notebooks.title, pattern)))
       .limit(10);
 
     const sourceRows = await db
@@ -49,11 +54,10 @@ export async function GET(request: Request): Promise<NextResponse> {
         title: schema.sources.title,
       })
       .from(schema.sources)
+      .innerJoin(schema.notebooks, eq(schema.notebooks.id, schema.sources.notebookId))
       .where(
         and(
-          sql`EXISTS (SELECT 1 FROM notebooks n WHERE n.id = ${schema.sources.notebookId}
-                   AND (n.owner_user_id = ${session.userId ?? '__none__'}
-                        OR n.session_id = ${session.id}))`,
+          ownsNotebook,
           ilike(schema.sources.title, pattern),
         ),
       )
@@ -66,11 +70,10 @@ export async function GET(request: Request): Promise<NextResponse> {
         title: schema.notes.title,
       })
       .from(schema.notes)
+      .innerJoin(schema.notebooks, eq(schema.notebooks.id, schema.notes.notebookId))
       .where(
         and(
-          sql`EXISTS (SELECT 1 FROM notebooks n WHERE n.id = ${schema.notes.notebookId}
-                   AND (n.owner_user_id = ${session.userId ?? '__none__'}
-                        OR n.session_id = ${session.id}))`,
+          ownsNotebook,
           ilike(schema.notes.title, pattern),
         ),
       )
@@ -81,19 +84,19 @@ export async function GET(request: Request): Promise<NextResponse> {
         id: row.id,
         title: row.title,
         icon: row.icon,
-        type: 'notebook',
+        type: 'notebook' as const,
       })),
       ...sourceRows.map((row) => ({
         id: row.notebookId,
         title: row.title,
         icon: '📄',
-        type: 'source',
+        type: 'source' as const,
       })),
       ...noteRows.map((row) => ({
         id: row.notebookId,
         title: row.title,
         icon: '🗒️',
-        type: 'note',
+        type: 'note' as const,
       })),
     ];
 

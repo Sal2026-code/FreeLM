@@ -140,14 +140,26 @@ export function languageName(code: string): string {
   return getLanguage(code).name;
 }
 
-/** Two distinct voices for the two-host Audio Overview. */
+/**
+ * Two distinct voices for the two-host Audio Overview.
+ *
+ * The keyless voice endpoint chooses a speaker from the locale, so the two
+ * hosts use different regional variants of the same language.
+ */
 export function hostVoices(languageCode: string): { hostA: string; hostB: string } {
-  const lang = getLanguage(languageCode);
-  if (lang.edge) {
-    // Edge TTS publishes gendered pairs; the two hosts use one of each.
-    const female = lang.edge.replace(/-Neural$/, 'Neural');
-    const male = `${lang.edge.split('-').slice(0, 2).join('-')}-GuyNeural`;
-    return { hostA: female, hostB: male };
-  }
-  return { hostA: 'alloy', hostB: 'onyx' };
+  const language = getLanguage(languageCode);
+  const base = language.edge ?? 'en-US-AriaNeural';
+  const parts = base.split('-');
+  const locale = parts.length >= 2 ? `${parts[0]}-${parts[1]}` : language.bcp47;
+  const region = locale.split('-')[1] ?? 'US';
+  const alternatives: Record<string, string[]> = {
+    US: ['en-GB', 'en-AU', 'en-IN'],
+    GB: ['en-US', 'en-AU', 'en-IN'],
+    AU: ['en-US', 'en-GB', 'en-IN'],
+    IN: ['en-US', 'en-GB', 'en-AU'],
+  };
+  return {
+    hostA: locale,
+    hostB: (alternatives[region] ?? ['en-US', 'en-GB'])[0] ?? locale,
+  };
 }

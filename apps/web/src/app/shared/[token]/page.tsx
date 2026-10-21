@@ -1,13 +1,12 @@
 import { and, asc, eq } from 'drizzle-orm';
 import { notFound } from 'next/navigation';
 
-import type { Citation } from '@freelm/shared';
+import type { Citation, StudioOutput } from '@freelm/shared';
 
 import { db, schema } from '@/lib/db';
 import { listMessages, listOutputs, listSources } from '@/lib/api/queries';
 import { resolveShareToken } from '@/lib/auth/session';
 import { MarkdownRenderer } from '@/components/markdown/MarkdownRenderer';
-import { StudioOutputViewer } from '@/components/studio/StudioOutputViewer';
 import { BrandMark } from '@/components/shell/TopNav';
 
 export const dynamic = 'force-dynamic';
@@ -131,12 +130,10 @@ export default async function SharedNotebookPage({
                   key={output.id}
                   className="rounded-panel border border-hairline bg-surface p-4"
                 >
-                  <StudioOutputViewer
-                    output={output}
-                    onBack={() => undefined}
-                    onChanged={async () => undefined}
-                    onSendToChat={async () => undefined}
-                  />
+                  <h3 className="mb-2 text-sm font-semibold text-neutral-100">
+                    {output.title}
+                  </h3>
+                  <SharedOutput output={output} />
                 </div>
               ))}
             </div>
@@ -144,5 +141,130 @@ export default async function SharedNotebookPage({
         ) : null}
       </main>
     </div>
+  );
+}
+
+/**
+ * A read-only rendering of a Studio output for the public shared view.
+ *
+ * The full viewer is a client component that takes callbacks, and callbacks
+ * cannot cross the server → client boundary, so the shared page renders the
+ * payload directly instead.
+ */
+function SharedOutput({ output }: { output: StudioOutput }) {
+  const content = output.content;
+
+  if (typeof content === 'string') {
+    return <MarkdownRenderer content={content} />;
+  }
+
+  if (output.type === 'quiz') {
+    const questions =
+      (content as { questions?: { prompt: string; answer: string }[] }).questions ??
+      [];
+    return (
+      <ol className="list-decimal space-y-3 pl-5">
+        {questions.map((question, index) => (
+          <li key={index} className="text-[13.5px] text-neutral-200">
+            <p className="font-medium">{question.prompt}</p>
+            <p className="mt-0.5 text-neutral-500">Answer: {question.answer}</p>
+          </li>
+        ))}
+      </ol>
+    );
+  }
+
+  if (output.type === 'flashcards') {
+    const cards =
+      (content as { cards?: { question: string; answer: string }[] }).cards ?? [];
+    return (
+      <ul className="space-y-3">
+        {cards.map((card, index) => (
+          <li key={index} className="text-[13.5px] text-neutral-200">
+            <p className="font-medium">{card.question}</p>
+            <p className="mt-0.5 text-neutral-500">{card.answer}</p>
+          </li>
+        ))}
+      </ul>
+    );
+  }
+
+  if (output.type === 'data_table') {
+    const table = content as {
+      columns?: { key: string; header: string }[];
+      rows?: Record<string, string>[];
+    };
+    if (!table.columns?.length) return null;
+    return (
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse text-[12.5px]">
+          <thead>
+            <tr>
+              {table.columns.map((column) => (
+                <th
+                  key={column.key}
+                  className="border-b border-hairline bg-surface-2 px-2.5 py-1.5 text-left font-semibold text-neutral-100"
+                >
+                  {column.header}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {(table.rows ?? []).map((row, rowIndex) => (
+              <tr key={rowIndex}>
+                {table.columns!.map((column) => (
+                  <td
+                    key={column.key}
+                    className="border-b border-hairline px-2.5 py-1.5 align-top text-neutral-300"
+                  >
+                    {row[column.key] ?? '—'}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
+
+  if (output.type === 'audio_overview' || output.type === 'video_overview') {
+    const transcript =
+      (content as { transcript?: { speaker: string; text: string }[] })
+        .transcript ?? [];
+    if (transcript.length === 0) {
+      return (
+        <p className="text-[13px] text-neutral-400">
+          {output.fileUrl ? (
+            <a
+              href={output.fileUrl}
+              className="text-accent underline underline-offset-2"
+            >
+              Download the artifact
+            </a>
+          ) : (
+            'This artifact is still being rendered.'
+          )}
+        </p>
+      );
+    }
+    return (
+      <div className="space-y-2">
+        {transcript.map((turn, index) => (
+          <p key={index} className="text-[13px] leading-6 text-neutral-300">
+            <span className="font-semibold text-neutral-100">{turn.speaker}: </span>
+            {turn.text}
+          </p>
+        ))}
+      </div>
+    );
+  }
+
+  // Everything else is JSON — render it readably.
+  return (
+    <pre className="overflow-x-auto whitespace-pre-wrap break-words font-mono text-[12px] leading-5 text-neutral-400">
+      {JSON.stringify(content, null, 2)}
+    </pre>
   );
 }

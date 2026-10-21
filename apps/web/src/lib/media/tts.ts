@@ -40,9 +40,9 @@ export function resolveVoices(languageCode = 'en'): VoiceSet {
   if (backend === 'edge') {
     return {
       backend: 'edge',
-      hostA: language.edge ?? 'en-US-AriaNeural',
+      hostA: edgeLocale(language),
       hostB: edgeAlternateVoice(language),
-      narrator: language.edge ?? 'en-US-AriaNeural',
+      narrator: edgeLocale(language),
     };
   }
 
@@ -77,46 +77,56 @@ export function resolveVoices(languageCode = 'en'): VoiceSet {
     // the keyless backend is the safe default.
     return {
       backend: 'edge',
-      hostA: language.edge ?? 'en-US-AriaNeural',
+      hostA: edgeLocale(language),
       hostB: edgeAlternateVoice(language),
-      narrator: language.edge ?? 'en-US-AriaNeural',
+      narrator: edgeLocale(language),
     };
   }
 
   return {
     backend: 'edge',
-    hostA: language.edge ?? 'en-US-AriaNeural',
+    hostA: edgeLocale(language),
     hostB: edgeAlternateVoice(language),
-    narrator: language.edge ?? 'en-US-AriaNeural',
+    narrator: edgeLocale(language),
   };
 }
 
-/** A second voice for the same language, for the two-host dialogue. */
-function edgeAlternateVoice(language: Language): string {
-  const base = language.edge ?? 'en-US-AriaNeural';
-  const candidates = ['GuyNeural', 'EricNeural', 'AndrewNeural', 'DavisNeural'];
-  const found = candidates.find((candidate) =>
-    base.includes(candidate.replace('Neural', '')),
-  );
-  if (found) {
-    return base.replace(found, found);
+/**
+ * The locale the keyless voice endpoint understands.
+ *
+ * The endpoint picks a voice from the locale (it rejects full Edge voice
+ * names), so `en-US-AriaNeural` becomes `en-US`.
+ */
+function edgeLocale(language: Language): string {
+  const voice = language.edge ?? 'en-US-AriaNeural';
+  const parts = voice.split('-');
+  if (parts.length >= 2) {
+    return `${parts[0]}-${parts[1]}`;
   }
-  // Swap the gendered portion of the Edge voice name.
-  const male = [
-    'en-US-GuyNeural',
-    'en-GB-RyanNeural',
-    'de-DE-ConradNeural',
-    'es-ES-AlvaroNeural',
-    'fr-FR-HenriNeural',
-    'it-IT-DiegoNeural',
-    'ja-JP-KeitaNeural',
-    'pt-BR-DanielNeural',
-    'hi-IN-MadhurNeural',
-    'ko-KR-InJoonNeural',
-    'zh-CN-YunxiNeural',
-  ];
-  const fallback = male.find((voice) => voice.startsWith(language.code.split('-')[0] ?? ''));
-  return fallback ?? base.replace(/Neural$/, 'Neural');
+  return language.bcp47;
+}
+
+/**
+ * A second voice for the same language, for the two-host dialogue.
+ *
+ * The keyless Google Translate voice endpoint selects a voice from the
+ * locale, so the two hosts use different regional variants of the same
+ * language. That gives a genuinely different speaker for each side without
+ * needing an API key.
+ */
+function edgeAlternateVoice(language: Language): string {
+  const base = edgeLocale(language);
+  const region = base.split('-')[1] ?? 'US';
+  const alternatives: Record<string, string[]> = {
+    US: ['en-GB', 'en-AU', 'en-IN', 'en-CA', 'en-ZA'],
+    GB: ['en-US', 'en-AU', 'en-IN', 'en-CA', 'en-ZA'],
+    AU: ['en-US', 'en-GB', 'en-IN', 'en-CA'],
+    IN: ['en-US', 'en-GB', 'en-AU', 'en-CA'],
+    CA: ['en-US', 'en-GB', 'en-AU', 'en-IN'],
+    ZA: ['en-US', 'en-GB', 'en-AU'],
+  };
+  const list = alternatives[region] ?? ['en-US', 'en-GB', 'en-AU'];
+  return list[0] ?? base;
 }
 
 /**
@@ -174,8 +184,8 @@ async function speakGemini(text: string, voice: string): Promise<Buffer> {
 /**
  * Keyless Google Translate text-to-speech.
  *
- * The `tw-ob` client accepts full Edge voice names in the `tl` parameter,
- * which is how FreeLM gets distinct male and female hosts with no API key.
+ * The endpoint selects a voice from the locale in `tl` and returns MP3
+ * bytes. It is free, needs no key, and speaks 100+ languages.
  */
 async function speakEdge(
   text: string,
@@ -185,7 +195,7 @@ async function speakEdge(
 ): Promise<Buffer> {
   const url = new URL('https://translate.google.com/translate_tts');
   url.searchParams.set('ie', 'UTF-8');
-  url.searchParams.set('client', 'tw-ob');
+  url.searchParams.set('client', 'gtx');
   url.searchParams.set('tl', voice || language.bcp47);
   url.searchParams.set('q', text.slice(0, 1800));
 
@@ -196,7 +206,8 @@ async function speakEdge(
   const response = await fetch(url.toString(), {
     headers: {
       'User-Agent':
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      Referer: 'https://translate.google.com/',
     },
   });
 
