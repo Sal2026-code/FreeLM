@@ -84,6 +84,28 @@ export class UpstreamError extends Error {
 }
 
 /**
+ * Pull the human-readable message out of a provider error payload.
+ *
+ * Handles the common shapes: `{ error: { message } }`, `{ error: "text" }`
+ * and `{ message }`.
+ */
+export function extractProviderMessage(body: string): string {
+  if (!body) return '';
+  try {
+    const parsed = JSON.parse(body) as {
+      error?: { message?: string } | string;
+      message?: string;
+    };
+    if (typeof parsed.error === 'string') return parsed.error;
+    if (parsed.error?.message) return parsed.error.message;
+    if (parsed.message) return parsed.message;
+  } catch {
+    /* not JSON — use the raw text */
+  }
+  return body.slice(0, 300).trim();
+}
+
+/**
  * Map a provider HTTP response onto an `UpstreamError`.
  *
  * The message sniffing below is deliberately generous: every major provider
@@ -104,6 +126,41 @@ export async function toUpstreamError(
 
   const haystack = body.toLowerCase();
   const code = response.status;
+
+  // Some providers answer 200 with an error payload (rate limits, credit
+  // problems and empty completions all look like this). Surface the real
+  // message rather than a bare status code.
+  if (code >= 200 && code < 300) {
+    const message = extractProviderMessage(body);
+    const lower = message.toLowerCase();
+    if (
+      lower.includes('insufficient') ||
+      lower.includes('credit') ||
+      lower.includes('billing') ||
+      lower.includes('quota')
+    ) {
+      return new UpstreamError({
+        code: 'INSUFFICIENT_FUNDS',
+        message: message || 'Provider reported insufficient funds.',
+        status: 402,
+        provider,
+      });
+    }
+    if (lower.includes('rate limit') || lower.includes('too many requests')) {
+      return new UpstreamError({
+        code: 'RATE_LIMITED',
+        message: message || 'Provider rate limit reached.',
+        status: 429,
+        provider,
+      });
+    }
+    return new UpstreamError({
+      code: 'BAD_RESPONSE',
+      message: message || 'The provider returned an error response.',
+      status: 502,
+      provider,
+    });
+  }
 
   if (code === 401 || code === 403) {
     const isPermission =

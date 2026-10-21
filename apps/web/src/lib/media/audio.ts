@@ -53,6 +53,12 @@ export async function buildAudioOverview(
   const voices = resolveVoices(language);
   const parts: string[] = [];
 
+  // The short silence between turns gives the hosts a natural rhythm. It has
+  // to exist before the first merge, because the concat demuxer references
+  // it by path.
+  const silence = path.join(workDir, 'silence.mp3');
+  await writeSilence(silence, 0.45);
+
   try {
     for (let index = 0; index < turns.length; index += 1) {
       const turn = turns[index];
@@ -63,6 +69,7 @@ export async function buildAudioOverview(
       const speed = isHostB ? voices.hostBSpeed : undefined;
 
       const segments = segmentForSpeech(turn.text);
+      if (segments.length === 0) continue;
       const turnFiles: string[] = [];
 
       for (let segmentIndex = 0; segmentIndex < segments.length; segmentIndex += 1) {
@@ -84,7 +91,7 @@ export async function buildAudioOverview(
 
       if (turnFiles.length === 1) {
         parts.push(turnFiles[0] as string);
-      } else {
+      } else if (turnFiles.length > 1) {
         const merged = path.join(
           workDir,
           `turn-${String(index).padStart(3, '0')}.mp3`,
@@ -97,9 +104,6 @@ export async function buildAudioOverview(
     }
 
     // A short silence between turns gives the hosts a natural rhythm.
-    const silence = path.join(workDir, 'silence.mp3');
-    await writeSilence(silence, 0.45);
-
     await concatAudio(parts, outputPath, 0.45);
     const buffer = await readFile(outputPath);
     const durationSeconds = await probeDuration(outputPath);

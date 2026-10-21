@@ -9,6 +9,9 @@
 
 import { Worker } from 'bullmq';
 import { eq } from 'drizzle-orm';
+import { mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 
 import { env } from '@/lib/env';
 import { STUDIO_QUEUE, type StudioJobData } from '@/lib/queue';
@@ -21,6 +24,10 @@ import { renderInfographic } from '@/lib/media/slides';
 import { STUDIO_GENERATORS } from '@/lib/studio/generators';
 import { finaliseOutput } from '@/lib/studio/finalise';
 import type { AudioOverviewContent, VideoOverviewContent } from '@freelm/shared';
+
+/** Media is rendered in a scratch directory; the artifact is stored by
+ *  `finaliseOutput` once it is finished. */
+const tmpDir = mkdtempSync(path.join(tmpdir(), 'freelm-studio-'));
 
 const worker = new Worker<StudioJobData>(
   STUDIO_QUEUE,
@@ -70,7 +77,7 @@ const worker = new Worker<StudioJobData>(
             text: turn.text,
           })),
           language,
-          outputPath: `${process.cwd()}/storage/${key}`,
+          outputPath: path.join(tmpDir, `${outputId}.mp3`),
           onProgress: (progress) => {
             void db
               .update(schema.studioOutputs)
@@ -79,7 +86,8 @@ const worker = new Worker<StudioJobData>(
           },
         });
 
-        await storage.put(key, built.buffer, 'audio/mpeg');
+        // `finaliseOutput` persists the artifact; the local copy is only a
+        // build artefact and is removed afterwards.
         const output = await finaliseOutput(outputId, {
           title: script.title,
           content: script,
@@ -92,6 +100,7 @@ const worker = new Worker<StudioJobData>(
           citationChunkIds: script.citationChunkIds ?? [],
           file: { buffer: built.buffer, mimeType: 'audio/mpeg', extension: 'mp3' },
         });
+        void storage;
         publishEvent(notebookId, { type: 'output', output });
         return { ok: true, outputId };
       }
@@ -127,7 +136,7 @@ const worker = new Worker<StudioJobData>(
           })),
           style: (script.style ?? 'professional') as never,
           language,
-          outputPath: `${process.cwd()}/storage/${key}`,
+          outputPath: path.join(tmpDir, `${outputId}.mp4`),
           onProgress: (progress) => {
             void db
               .update(schema.studioOutputs)
@@ -136,7 +145,6 @@ const worker = new Worker<StudioJobData>(
           },
         });
 
-        await storage.put(key, built.buffer, 'video/mp4');
         const output = await finaliseOutput(outputId, {
           title: script.title,
           content: script,
@@ -150,6 +158,7 @@ const worker = new Worker<StudioJobData>(
             .citationChunkIds ?? [],
           file: { buffer: built.buffer, mimeType: 'video/mp4', extension: 'mp4' },
         });
+        void storage;
         publishEvent(notebookId, { type: 'output', output });
         return { ok: true, outputId };
       }

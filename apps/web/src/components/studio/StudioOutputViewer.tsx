@@ -30,6 +30,76 @@ export interface StudioOutputViewerProps {
   onSendToChat: (content: string) => void | Promise<void>;
 }
 
+/**
+ * The artifact body, with no event handlers.
+ *
+ * Kept separate from the viewer so a **Server Component** (the public
+ * shared-notebook page) can render an artifact without passing functions
+ * across the server/client boundary.
+ */
+export function StudioOutputContent({ output }: { output: StudioOutput }) {
+  switch (output.type) {
+    case 'audio_overview':
+      return <AudioViewer output={output} content={output.content as AudioOverviewContent} />;
+    case 'video_overview':
+      return <VideoViewer output={output} content={output.content as VideoOverviewContent} />;
+    case 'quiz':
+      return (
+        <QuizViewer
+          output={output}
+          questions={
+            ((output.content as { questions?: QuizQuestion[] })?.questions ??
+              []) as QuizQuestion[]
+          }
+        />
+      );
+    case 'flashcards':
+      return (
+        <FlashcardViewer
+          output={output}
+          cards={
+            ((output.content as { cards?: Flashcard[] })?.cards ?? []) as Flashcard[]
+          }
+        />
+      );
+    case 'mind_map':
+      return <MindMapViewer root={output.content as MindMapNode} />;
+    case 'data_table':
+      return <DataTableViewer output={output} content={output.content as DataTableContent} />;
+    case 'slide_deck':
+      return <DeckViewer output={output} content={output.content as SlideDeck} />;
+    case 'infographic':
+      return <InfographicViewer output={output} />;
+    case 'interactive_learning':
+      return (
+        <InteractiveViewer content={output.content as InteractiveLearningContent} />
+      );
+    case 'data_analysis':
+      return (
+        <AnalysisViewer
+          content={
+            output.content as {
+              title: string;
+              code: string;
+              stdout: string;
+              result: string;
+            }
+          }
+        />
+      );
+    default:
+      return (
+        <MarkdownRenderer
+          content={
+            typeof output.content === 'string'
+              ? output.content
+              : JSON.stringify(output.content, null, 2)
+          }
+        />
+      );
+  }
+}
+
 /** Routes an output to its bespoke viewer. */
 export function StudioOutputViewer({
   output,
@@ -86,85 +156,11 @@ export function StudioOutputViewer({
             ) : null}
           </div>
         ) : (
-          <OutputBody output={output} onChanged={onChanged} toast={toast} />
+          <StudioOutputContent output={output} />
         )}
       </div>
     </div>
   );
-}
-
-function OutputBody({
-  output,
-  onChanged,
-  toast,
-}: {
-  output: StudioOutput;
-  onChanged: () => void | Promise<void>;
-  toast: ReturnType<typeof useToast>;
-}) {
-  switch (output.type) {
-    case 'audio_overview':
-      return (
-        <AudioViewer
-          output={output}
-          content={output.content as AudioOverviewContent}
-        />
-      );
-    case 'video_overview':
-      return (
-        <VideoViewer
-          output={output}
-          content={output.content as VideoOverviewContent}
-        />
-      );
-    case 'quiz':
-      return (
-        <QuizViewer
-          output={output}
-          questions={
-            ((output.content as { questions?: QuizQuestion[] })?.questions ??
-              []) as QuizQuestion[]
-          }
-          onChanged={onChanged}
-        />
-      );
-    case 'flashcards':
-      return (
-        <FlashcardViewer
-          output={output}
-          cards={
-            ((output.content as { cards?: Flashcard[] })?.cards ?? []) as Flashcard[]
-          }
-          onChanged={onChanged}
-        />
-      );
-    case 'mind_map':
-      return <MindMapViewer root={output.content as MindMapNode} />;
-    case 'data_table':
-      return <DataTableViewer output={output} content={output.content as DataTableContent} />;
-    case 'slide_deck':
-      return <DeckViewer output={output} content={output.content as SlideDeck} />;
-    case 'infographic':
-      return <InfographicViewer output={output} />;
-    case 'interactive_learning':
-      return (
-        <InteractiveViewer content={output.content as InteractiveLearningContent} />
-      );
-    case 'data_analysis':
-      return <AnalysisViewer content={output.content as { title: string; code: string; stdout: string; result: string }} />;
-    default:
-      return (
-        <MarkdownRenderer
-          content={
-            typeof output.content === 'string'
-              ? output.content
-              : JSON.stringify(output.content, null, 2)
-          }
-        />
-      );
-  }
-  void toast;
-  void onChanged;
 }
 
 // ---------------------------------------------------------------------------
@@ -374,11 +370,9 @@ function VideoViewer({
 function QuizViewer({
   output,
   questions,
-  onChanged,
 }: {
   output: StudioOutput;
   questions: QuizQuestion[];
-  onChanged: () => void | Promise<void>;
 }) {
   const toast = useToast();
   const [index, setIndex] = useState(0);
@@ -438,7 +432,6 @@ function QuizViewer({
         topics: [...new Set(questions.map((question) => question.topic))],
       }),
     });
-    await onChanged();
   }
 
   if (questions.length === 0) {
@@ -741,11 +734,9 @@ function ProgressRing({ percent }: { percent: number }) {
 function FlashcardViewer({
   output,
   cards,
-  onChanged,
 }: {
   output: StudioOutput;
   cards: Flashcard[];
-  onChanged: () => void | Promise<void>;
 }) {
   const [index, setIndex] = useState(0);
   const [revealed, setRevealed] = useState(false);
@@ -794,7 +785,6 @@ function FlashcardViewer({
           topics: [...new Set(cards.map((card) => card.topic))],
         }),
       });
-      await onChanged();
     } else {
       setIndex(index + 1);
       setRevealed(false);
@@ -1251,3 +1241,4 @@ function AnalysisViewer({
     </div>
   );
 }
+

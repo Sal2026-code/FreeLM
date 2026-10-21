@@ -15,6 +15,7 @@
     "db:seed": "tsx scripts/seed.ts",
     "db:studio": "drizzle-kit studio",
     "db:reembed": "tsx scripts/reembed.ts",
+    "check:tts": "tsx scripts/check-tts.ts",
     "worker": "tsx src/workers/index.ts",
     "worker:studio": "tsx src/workers/studio.worker.ts"
   },

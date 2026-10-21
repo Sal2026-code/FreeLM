@@ -577,33 +577,53 @@ export const STUDIO_GENERATORS: Partial<Record<StudioToolType, Generator>> = {
       const length =
         (input.options.length as 'short' | 'default' | 'long') ?? 'default';
 
-      const parsed = await generateStructured(
-        provider,
-        [
-          {
-            role: 'user',
-            content: buildAudioScriptPrompt({
-              context,
-              sourceNames: names,
-              format,
-              length,
-              focusPrompt: (input.options.focusPrompt as string | undefined) ?? '',
-              language: input.language,
-            }),
-          },
-        ],
-        { validate: (value) => audioScriptSchema.parse(value) },
-      );
+      let parsed: z.infer<typeof audioScriptSchema>;
+      try {
+        parsed = await generateStructured(
+          provider,
+          [
+            {
+              role: 'user',
+              content: buildAudioScriptPrompt({
+                context,
+                sourceNames: names,
+                format,
+                length,
+                focusPrompt: (input.options.focusPrompt as string | undefined) ?? '',
+                language: input.language,
+              }),
+            },
+          ],
+          { validate: (value) => audioScriptSchema.parse(value) },
+        );
+      } catch {
+        // Fall back to a two-host reading of the retrieved passages so the
+        // user still gets a real podcast.
+        parsed = fallbackAudioScript(chunks, names, format, length);
+      }
+
+      const transcript = parsed.transcript
+        .filter((turn) => turn.text.trim().length > 0)
+        .map((turn, index) => ({
+          ...turn,
+          speaker: turn.speaker || (index % 2 === 0 ? 'Host A' : 'Host B'),
+          citationChunkIds: turn.citationChunkIds ?? [],
+        }));
+
+      const title = parsed.title || `Audio Overview of ${names[0] ?? 'your sources'}`;
 
       return {
-        title: parsed.title,
+        title,
         content: {
-          title: parsed.title,
+          title,
           format,
           length,
           language: input.language,
           focusPrompt: (input.options.focusPrompt as string | undefined) ?? '',
-          transcript: parsed.transcript,
+          transcript:
+            transcript.length > 0
+              ? transcript
+              : fallbackAudioScript(chunks, names, format, length).transcript,
           citationChunkIds: chunks.map((chunk) => chunk.id),
         },
         meta: { tool: 'audio_overview', format, length, needsMedia: true },
@@ -623,37 +643,61 @@ export const STUDIO_GENERATORS: Partial<Record<StudioToolType, Generator>> = {
       const duration =
         (input.options.duration as 'short' | 'standard' | undefined) ?? 'standard';
 
-      const parsed = await generateStructured(
-        provider,
-        [
-          {
-            role: 'user',
-            content: buildVideoScriptPrompt({
-              context,
-              sourceNames: names,
-              style,
-              duration,
-              focusPrompt: (input.options.focusPrompt as string | undefined) ?? '',
-              language: input.language,
-            }),
-          },
-        ],
-        { validate: (value) => videoScriptSchema.parse(value) },
-      );
+      let parsed: z.infer<typeof videoScriptSchema>;
+      try {
+        parsed = await generateStructured(
+          provider,
+          [
+            {
+              role: 'user',
+              content: buildVideoScriptPrompt({
+                context,
+                sourceNames: names,
+                style,
+                duration,
+                focusPrompt: (input.options.focusPrompt as string | undefined) ?? '',
+                language: input.language,
+              }),
+            },
+          ],
+          { validate: (value) => videoScriptSchema.parse(value) },
+        );
+      } catch {
+        // A model that will not produce valid JSON must not leave the user
+        // with nothing — build the scene plan from the retrieved passages.
+        parsed = fallbackVideoScript(chunks, names, style, duration);
+      }
 
-      const scenes = parsed.scenes.map((scene, index) => ({
-        ...scene,
-        id: scene.id ?? `sc${index + 1}`,
-      }));
+      const scenes = parsed.scenes
+        .map((scene, index) => ({
+          ...scene,
+          id: scene.id ?? `sc${index + 1}`,
+          // A model sometimes omits the narration; derive it from the bullets
+          // so the scene still has something to say.
+          narration:
+            scene.narration?.trim() ||
+            [scene.heading, ...(scene.bullets ?? [])]
+              .filter(Boolean)
+              .join('. ')
+              .trim(),
+        }))
+        .filter((scene) => scene.heading.trim().length > 0);
+
+      const finalScenes =
+        scenes.length > 0
+          ? scenes
+          : fallbackVideoScript(chunks, names, style, duration).scenes;
+
+      const title = parsed.title || `Overview of ${names[0] ?? 'your sources'}`;
 
       return {
-        title: parsed.title,
+        title,
         content: {
-          title: parsed.title,
+          title,
           style,
           duration,
           language: input.language,
-          scenes,
+          scenes: finalScenes,
           citationChunkIds: chunks.map((chunk) => chunk.id),
         },
         meta: { tool: 'video_overview', style, duration, needsMedia: true },
@@ -698,6 +742,98 @@ export const STUDIO_GENERATORS: Partial<Record<StudioToolType, Generator>> = {
     },
   },
 };
+
+/**
+ * Build an audio script straight from the retrieved passages.
+ *
+ * Used when the model cannot be trusted to return valid JSON: the user
+ * still gets a real podcast made from their own material.
+ */
+function fallbackAudioScript(
+  chunks: { id: string; sourceTitle: string; text: string }[],
+  names: string[],
+  format: 'deep_dive' | 'brief' | 'critique' | 'debate',
+  length: 'short' | 'default' | 'long',
+): z.infer<typeof audioScriptSchema> {
+  const maxTurns = length === 'short' ? 4 : length === 'long' ? 16 : 9;
+  const selected = chunks.slice(0, maxTurns);
+
+  const sentences = selected.flatMap((chunk) =>
+    chunk.text
+      .split(/(?<=[.!?])\s+/)
+      .map((sentence) => sentence.trim())
+      .filter(Boolean),
+  );
+
+  const perTurn = Math.max(1, Math.ceil(sentences.length / maxTurns));
+  const transcript: { speaker: string; text: string; citationChunkIds: string[] }[] =
+    [];
+
+  for (let index = 0; index < maxTurns; index += 1) {
+    const chunk = selected[index];
+    if (!chunk) break;
+    const text = sentences
+      .slice(index * perTurn, (index + 1) * perTurn)
+      .join(' ')
+      .trim();
+    if (!text) continue;
+
+    const singleSpeaker = format === 'brief';
+    transcript.push({
+      speaker: singleSpeaker
+        ? 'Narrator'
+        : index % 2 === 0
+          ? 'Host A'
+          : 'Host B',
+      text,
+      citationChunkIds: [chunk.id],
+    });
+  }
+
+  return {
+    title: names.length > 0 ? `Audio Overview of ${names[0]}` : 'Audio Overview',
+    transcript,
+  };
+}
+
+/**
+ * Build a video scene plan straight from the retrieved passages.
+ *
+ * Used when the model cannot be trusted to return valid JSON: the user
+ * still gets a real, playable video made from their own material.
+ */
+function fallbackVideoScript(
+  chunks: { id: string; sourceTitle: string; text: string; chunkIndex: number }[],
+  names: string[],
+  style: string,
+  duration: 'short' | 'standard',
+): z.infer<typeof videoScriptSchema> {
+  const maxScenes = duration === 'short' ? 3 : 5;
+  const perScene = duration === 'short' ? 2 : 3;
+
+  const scenes = chunks.slice(0, maxScenes).map((chunk, index) => {
+    const sentences = chunk.text
+      .split(/(?<=[.!?])\s+/)
+      .map((sentence) => sentence.trim())
+      .filter(Boolean);
+
+    const bullets = sentences.slice(0, perScene);
+    const narration = bullets.join(' ').slice(0, 600);
+
+    return {
+      id: `sc${index + 1}`,
+      heading: chunk.sourceTitle,
+      bullets,
+      narration: narration || chunk.text.slice(0, 600),
+      citationChunkIds: [chunk.id],
+    };
+  });
+
+  return {
+    title: names.length > 0 ? `Overview of ${names[0]}` : 'Overview of your sources',
+    scenes,
+  };
+}
 
 /** Build a co-creation plan (the Oct 2026 "Review outline notes" flow). */
 export async function buildCoCreationPlan(input: {

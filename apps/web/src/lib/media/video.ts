@@ -11,7 +11,7 @@
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
-import { ensureDirectory, probeDuration, runFfmpeg } from './ffmpeg';
+import { ensureDirectory, concatAudio, probeDuration, runFfmpeg } from './ffmpeg';
 import { renderSlide, type SlideStyle } from './slides';
 import { resolveVoices, segmentForSpeech, speak } from './tts';
 
@@ -91,17 +91,79 @@ export async function buildVideoOverview(
       );
       await writeFile(image, png);
 
-      // Narration audio
-      const audioPath = path.join(workDir, `narration-${String(index).padStart(3, '0')}.mp3`);
-      const segments = segmentForSpeech(scene.narration);
-      const audioBuffers: Buffer[] = [];
-      for (const segment of segments) {
-        audioBuffers.push(
-          await speak(segment, { voice: voices.narrator, language }),
-        );
+      // Narration audio. Each synthesised chunk is a complete MP3 file with
+      // its own ID3 header, so they must be merged with the concat demuxer
+      // rather than concatenated as raw bytes.
+      const audioPath = path.join(
+        workDir,
+        `narration-${String(index).padStart(3, '0')}.mp3`,
+      );
+
+      // A model occasionally returns a scene with no narration. Fall back to
+      // the heading and bullets so the scene is never silent.
+      const narration =
+        scene.narration?.trim() ||
+        [scene.heading, ...(scene.bullets ?? [])]
+          .filter(Boolean)
+          .join('. ')
+          .trim();
+
+      if (!narration) {
+        // Nothing to say for this scene — render it as a silent slide.
+        const segmentFile = await renderSegment({
+          image,
+          audio: null,
+          output: path.join(
+            workDir,
+            `segment-${String(index + 1).padStart(3, '0')}.mp4`,
+          ),
+          durationSeconds: 3,
+        });
+        segmentFiles.push(segmentFile);
+        options.onProgress?.((index + 1) / scenes.length);
+        continue;
       }
-      const audio = Buffer.concat(audioBuffers);
-      await writeFile(audioPath, audio);
+
+      const segments = segmentForSpeech(narration);
+      const audioParts: string[] = [];
+
+      for (let segmentIndex = 0; segmentIndex < segments.length; segmentIndex += 1) {
+        const segment = segments[segmentIndex];
+        if (!segment) continue;
+        const buffer = await speak(segment, {
+          voice: voices.narrator,
+          language,
+        });
+        const file = path.join(
+          workDir,
+          `narration-${String(index).padStart(3, '0')}-${segmentIndex}.mp3`,
+        );
+        await writeFile(file, buffer);
+        audioParts.push(file);
+      }
+
+      if (audioParts.length === 0) {
+        // Nothing could be synthesised for this scene — render it as a
+        // silent slide rather than failing the whole video.
+        const segmentFile = await renderSegment({
+          image,
+          audio: null,
+          output: path.join(
+            workDir,
+            `segment-${String(index + 1).padStart(3, '0')}.mp4`,
+          ),
+          durationSeconds: 3,
+        });
+        segmentFiles.push(segmentFile);
+        options.onProgress?.((index + 1) / scenes.length);
+        continue;
+      }
+
+      if (audioParts.length === 1) {
+        await writeFile(audioPath, await readFile(audioParts[0]!));
+      } else {
+        await concatAudio(audioParts, audioPath, 0.25);
+      }
 
       const segmentFile = await renderSegment({
         image,
@@ -156,6 +218,11 @@ export async function buildVideoOverview(
 
 /**
  * Turn one image (+ optional audio) into an H.264 segment.
+ *
+ * Every segment gets an audio stream — a silent one when there is no
+ * narration — because the concat demuxer requires every input to have the
+ * same stream layout. A video-only segment mixed with audio segments makes
+ * ffmpeg silently drop the rest of the timeline.
  */
 async function renderSegment(params: {
   image: string;
@@ -167,6 +234,8 @@ async function renderSegment(params: {
 
   if (params.audio) {
     args.push('-i', params.audio);
+  } else {
+    args.push('-f', 'lavfi', '-i', 'anullsrc=channel_layout=mono:sample_rate=24000');
   }
 
   args.push(
@@ -182,13 +251,16 @@ async function renderSegment(params: {
     'aac',
     '-b:a',
     '128k',
+    '-ar',
+    '24000',
+    '-ac',
+    '1',
   );
 
-  if (params.audio) {
-    args.push('-shortest');
+  if (params.durationSeconds !== null) {
+    args.push('-t', String(params.durationSeconds));
   } else {
-    args.push('-t', String(params.durationSeconds ?? 3));
-    args.push('-an');
+    args.push('-shortest');
   }
 
   args.push(params.output);
