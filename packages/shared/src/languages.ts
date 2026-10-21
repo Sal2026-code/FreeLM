@@ -16,7 +16,14 @@ export interface Language {
   name: string;
   /** BCP-47 tag handed to TTS / STT providers. */
   bcp47: string;
-  /** Microsoft Edge TTS voice name. */
+  /**
+   * A second regional tag for the same language.
+   *
+   * The keyless TTS backend selects a different voice per regional tag, so
+   * this is what gives the two Audio Overview hosts distinct voices.
+   */
+  alt?: string;
+  /** Microsoft Edge TTS voice name (used by providers that accept one). */
   edge?: string;
   /** OpenAI TTS voice. */
   openai?: string;
@@ -33,11 +40,13 @@ const L = (
   edge: string | null | undefined,
   openai: string | null | undefined,
   gemini: string | null | undefined,
+  alt?: string,
   transcription = true,
 ): Language => ({
   code,
   name,
   bcp47,
+  ...(alt ? { alt } : {}),
   ...(edge ? { edge } : {}),
   ...(openai ? { openai } : {}),
   ...(gemini ? { gemini } : {}),
@@ -59,23 +68,23 @@ export const LANGUAGES: readonly Language[] = [
   L('my', 'Burmese (Myanmar)', 'my-MM', 'my-MM-ThazinNeural', 'my', 'my-MM'),
   L('ca', 'Catalan', 'ca-ES', 'ca-ES-JoanaNeural', 'ca', 'ca-ES'),
   L('ceb', 'Cebuano', 'fil-PH', 'fil-PH-GiselleNeural', 'ce', 'fil-PH'),
-  L('zh-hans', 'Chinese (Simplified)', 'zh-CN', 'zh-CN-XiaoxiaoNeural', 'zh', 'cmn-CN'),
-  L('zh-hant', 'Chinese (Traditional)', 'zh-TW', 'zh-TW-HsiaoChenNeural', 'zh', 'yue-Hant-HK'),
+  L('zh-hans', 'Chinese (Simplified)', 'zh-CN', 'zh-CN-XiaoxiaoNeural', 'zh', 'cmn-CN', 'zh-TW'),
+  L('zh-hant', 'Chinese (Traditional)', 'zh-TW', 'zh-TW-HsiaoChenNeural', 'zh', 'yue-Hant-HK', 'zh-CN'),
   L('hr', 'Croatian', 'hr-HR', 'hr-HR-GabrijNeural', 'hr', 'hr-HR'),
   L('cs', 'Czech', 'cs-CZ', 'cs-CZ-VlastaNeural', 'cs', 'cs-CZ'),
   L('da', 'Danish', 'da-DK', 'da-DK-ChristelNeural', 'da', 'da-DK'),
-  L('nl', 'Dutch', 'nl-NL', 'nl-NL-ColetteNeural', 'nl', 'nl-NL'),
+  L('nl', 'Dutch', 'nl-NL', 'nl-NL-ColetteNeural', 'nl', 'nl-NL', 'nl-BE'),
   L('en', 'English', 'en-US', 'en-US-JennyNeural', 'en', 'en-US'),
-  L('en-gb', 'English (UK)', 'en-GB', 'en-GB-SoniaNeural', 'en', 'en-GB'),
-  L('en-ca', 'English (Canada)', 'en-CA', 'en-CA-ClaraNeural', 'en', 'en-CA'),
+  L('en-gb', 'English (UK)', 'en-GB', 'en-GB-SoniaNeural', 'en', 'en-GB', 'en-AU', 'en-US'),
+  L('en-ca', 'English (Canada)', 'en-CA', 'en-CA-ClaraNeural', 'en', 'en-CA', 'en-US'),
   L('et', 'Estonian', 'et-EE', 'et-EE-AnuNeural', 'et', 'et-EE'),
   L('fil', 'Filipino', 'fil-PH', 'fil-PH-GiselleNeural', 'fil', 'fil-PH'),
   L('fi', 'Finnish', 'fi-FI', 'fi-FI-NooraNeural', 'fi', 'fi-FI'),
-  L('fr', 'French', 'fr-FR', 'fr-FR-DeniseNeural', 'fr', 'fr-FR'),
-  L('fr-ca', 'French (Canada)', 'fr-CA', 'fr-CA-SylvieNeural', 'fr', 'fr-CA'),
+  L('fr', 'French', 'fr-FR', 'fr-FR-DeniseNeural', 'fr', 'fr-FR', 'fr-CA'),
+  L('fr-ca', 'French (Canada)', 'fr-CA', 'fr-CA-SylvieNeural', 'fr', 'fr-CA', 'fr-FR'),
   L('gl', 'Galician', 'gl-ES', 'gl-ES-IriaNeural', 'gl', 'gl-ES'),
   L('ka', 'Georgian', 'ka-GE', 'ka-GE-NatiaNeural', 'ka', 'ka-GE'),
-  L('de', 'German', 'de-DE', 'de-DE-KatjaNeural', 'de', 'de-DE'),
+  L('de', 'German', 'de-DE', 'de-DE-KatjaNeural', 'de', 'de-DE', 'de-AT'),
   L('el', 'Greek', 'el-GR', 'el-GR-AthinaNeural', 'el', 'el-GR'),
   L('gu', 'Gujarati', 'gu-IN', 'gu-IN-DhwaniNeural', 'gu', 'gu-IN'),
   L('ht', 'Haitian Creole', 'ht-HT', 'ht-HT-SayanaNeural', null, 'ht-HT'),
@@ -84,7 +93,7 @@ export const LANGUAGES: readonly Language[] = [
   L('hu', 'Hungarian', 'hu-HU', 'hu-HU-NoemiNeural', 'hu', 'hu-HU'),
   L('is', 'Icelandic', 'is-IS', 'is-IS-HuldaNeural', 'is', 'is-IS'),
   L('id', 'Indonesian', 'id-ID', 'id-ID-GadisNeural', 'id', 'id-ID'),
-  L('it', 'Italian', 'it-IT', 'it-IT-ElsaNeural', 'it', 'it-IT'),
+  L('it', 'Italian', 'it-IT', 'it-IT-ElsaNeural', 'it', 'it-IT', 'it-CH'),
   L('ja', 'Japanese', 'ja-JP', 'ja-JP-NanamiNeural', 'ja', 'ja-JP'),
   L('jv', 'Javanese', 'jv-ID', 'jv-ID-ArdiNeural', 'jv', 'jv-ID'),
   L('kn', 'Kannada', 'kn-IN', 'kn-IN-ShwetaNeural', 'kn', 'kn-IN'),
@@ -96,25 +105,25 @@ export const LANGUAGES: readonly Language[] = [
   L('ml', 'Malayalam', 'ml-IN', 'ml-IN-SreeNeural', 'ml', 'ml-IN'),
   L('mr', 'Marathi', 'mr-IN', 'mr-IN-AaravNeural', 'mr', 'mr-IN'),
   L('ne', 'Nepali', 'ne-NP', 'ne-NP-SagarNeural', 'ne', 'ne-NP'),
-  L('nb', 'Norwegian (Bokmål)', 'nb-NO', 'nb-NO-LivNeural', 'nb', 'nb-NO'),
+  L('nb', 'Norwegian (Bokmål)', 'nb-NO', 'nb-NO-LivNeural', 'nb', 'nb-NO', 'nn-NO'),
   L('nn', 'Norwegian (Nynorsk)', 'nn-NO', 'nn-NO-LivNeural', 'no', 'nn-NO'),
   L('or', 'Oriya', 'or-IN', 'or-IN-SubhasreeNeural', null, 'or-IN'),
   L('ps', 'Pashto', 'ps-AF', 'ps-AF-GulNeural', null, 'ps-AF'),
   L('fa', 'Persian', 'fa-IR', 'fa-IR-DilaraNeural', 'fa', 'fa-IR'),
   L('pl', 'Polish', 'pl-PL', 'pl-PL-ZofiaNeural', 'pl', 'pl-PL'),
-  L('pt', 'Portuguese (Brazil)', 'pt-BR', 'pt-BR-FranciscaNeural', 'pt', 'pt-BR'),
-  L('pt-pt', 'Portuguese (Portugal)', 'pt-PT', 'pt-PT-RaquelNeural', 'pt', 'pt-PT'),
+  L('pt', 'Portuguese (Brazil)', 'pt-BR', 'pt-BR-FranciscaNeural', 'pt', 'pt-BR', 'pt-PT'),
+  L('pt-pt', 'Portuguese (Portugal)', 'pt-PT', 'pt-PT-RaquelNeural', 'pt', 'pt-PT', 'pt-BR'),
   L('pa', 'Punjabi', 'pa-IN', 'pa-IN-NancyNeural', null, 'pa-IN'),
   L('ro', 'Romanian', 'ro-RO', 'ro-RO-CristinaNeural', 'ro', 'ro-RO'),
   L('ru', 'Russian', 'ru-RU', 'ru-RU-SvetlanaNeural', 'ru', 'ru-RU'),
   L('sr', 'Serbian (Cyrillic)', 'sr-RS', 'sr-RS-SophieNeural', 'sr', 'sr-RS'),
   L('sk', 'Slovak', 'sk-SK', 'sk-SK-LukasNeural', 'sk', 'sk-SK'),
   L('sl', 'Slovenian', 'sl-SI', 'sl-SI-VesnaNeural', 'sl', 'sl-SI'),
-  L('es', 'Spanish', 'es-ES', 'es-ES-ElviraNeural', 'es', 'es-ES'),
-  L('es-mx', 'Spanish (Mexico)', 'es-MX', 'es-MX-DaliaNeural', 'es', 'es-MX'),
-  L('es-419', 'Spanish (Latin America)', 'es-419', 'es-419-XimenaNeural', 'es', 'es-419'),
+  L('es', 'Spanish', 'es-ES', 'es-ES-ElviraNeural', 'es', 'es-ES', 'es-MX'),
+  L('es-mx', 'Spanish (Mexico)', 'es-MX', 'es-MX-DaliaNeural', 'es', 'es-MX', 'es-US'),
+  L('es-419', 'Spanish (Latin America)', 'es-419', 'es-419-XimenaNeural', 'es', 'es-419', 'es-MX'),
   L('sw', 'Swahili', 'sw-KE', 'sw-KE-ZuriNeural', 'sw', 'sw-KE'),
-  L('sv', 'Swedish', 'sv-SE', 'sv-SE-SofieNeural', 'sv', 'sv-SE'),
+  L('sv', 'Swedish', 'sv-SE', 'sv-SE-SofieNeural', 'sv', 'sv-SE', 'sv-FI'),
   L('tl', 'Tagalog', 'tl-PH', 'tl-PH-GraceNeural', null, 'fil-PH'),
   L('ta', 'Tamil', 'ta-IN', 'ta-IN-PallaviNeural', 'ta', 'ta-IN'),
   L('te', 'Telugu', 'te-IN', 'te-IN-VaniNeural', 'te', 'te-IN'),
@@ -163,3 +172,4 @@ export function hostVoices(languageCode: string): { hostA: string; hostB: string
     hostB: (alternatives[region] ?? ['en-US', 'en-GB'])[0] ?? locale,
   };
 }
+

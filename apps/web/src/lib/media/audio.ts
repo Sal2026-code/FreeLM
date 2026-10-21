@@ -60,6 +60,7 @@ export async function buildAudioOverview(
 
       const isHostB = /host\s*b|host\s*2|guest|co-?host/i.test(turn.speaker);
       const voice = isHostB ? voices.hostB : voices.hostA;
+      const speed = isHostB ? voices.hostBSpeed : undefined;
 
       const segments = segmentForSpeech(turn.text);
       const turnFiles: string[] = [];
@@ -71,7 +72,11 @@ export async function buildAudioOverview(
           workDir,
           `turn-${String(index).padStart(3, '0')}-${segmentIndex}.mp3`,
         );
-        const audio = await speak(segment, { voice, language });
+        const audio = await speak(segment, {
+          voice,
+          language,
+          ...(speed !== undefined ? { speed } : {}),
+        });
         await mkdir(path.dirname(file), { recursive: true });
         await writeFile(file, audio);
         turnFiles.push(file);

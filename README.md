@@ -97,6 +97,16 @@ this table is implemented and unlocked.
 | **Co-creation** (Oct 2026) | Propose topics → confirm → steer → **Review toggle** with “Review outline notes” / “Review producer notes” → Proceed |
 | **Notes** | Scratchpad notes, promotable to a source |
 
+### Notebook icons come from your device
+
+The notebook icon is a **native OS emoji**, not a hardcoded list. Tapping the
+icon opens the operating system's own emoji keyboard — the globe key on
+iOS/macOS, the smiley key on Android, `Win` + `.` on Windows 11 — so any
+emoji your device knows about is available, including ones released after
+this app shipped. A grid of frequently used icons is offered as a shortcut.
+This works in both the website and the mobile app.
+| **Share a notebook** | A public read-only link (`/shared/:token`) for the whole notebook, its sources, its conversations and its artifacts |
+
 ---
 
 ## Architecture
@@ -140,6 +150,19 @@ Chat, embeddings, TTS and image generation all go through one interface, so
 - `openai-compatible` — Ollama, LM Studio, vLLM, OpenRouter, Groq, Together, DeepSeek, Mistral, xAI, Cloudflare Workers AI…
 - `gemini` — native Gemini API, including multi-voice TTS for 100+ languages
 - `anthropic` — Claude for chat (embeddings fall back to an OpenAI-compatible endpoint)
+
+### It works without an API key
+
+FreeLM is free to run, so two subsystems have a zero-cost default:
+
+- **Embeddings** — `FREELM_EMBEDDING_PROVIDER=local` uses a built-in offline
+  model (hashed word + character-trigram vectors, L2 normalised). It is a
+  genuine lexical embedding, so retrieval works with no account, no key and
+  no network. Switching to a hosted embedding model later is a clean
+  migration — see `npm run db:reembed`.
+- **Text to speech** — `FREELM_TTS_BACKEND=edge` uses the keyless Google
+  Translate voice endpoint (100+ languages, two distinct regional voices for
+  the two podcast hosts). Audio Overviews are therefore genuinely free.
 
 Embeddings are the one dimension-locked part: vectors from different models
 live in different spaces, so changing the embedding model is a deliberate
@@ -194,6 +217,8 @@ full list.
 | `FREELM_AUTH_SECRET` | — | **Required** for sessions. Generate one. |
 | `FREELM_AI_PROVIDER` | `openai` | `openai` \| `gemini` \| `anthropic` \| `openai-compatible` |
 | `FREELM_OPENAI_API_KEY` | — | Your provider key |
+| `FREELM_EMBEDDING_PROVIDER` | `auto` | `auto` \| `local` \| `openai` \| `gemini` \| `openai-compatible`. `local` needs no key. |
+| `FREELM_TTS_BACKEND` | `auto` | `auto` \| `edge` \| `openai` \| `gemini`. `edge` needs no key. |
 | `FREELM_EMBEDDING_DIM` | `1536` | pgvector column width |
 | `FREELM_RETRIEVAL_K` | `12` | Default retrieval depth (4–40) |
 | `FREELM_BRAVE_API_KEY` / `FREELM_TAVILY_API_KEY` | — | Optional: upgrades web search. Works keyless without them. |

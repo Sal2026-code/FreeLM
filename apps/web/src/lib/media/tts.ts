@@ -4,21 +4,25 @@
  * Three backends, chosen automatically:
  *   1. OpenAI  — highest quality, two distinct voices for the podcast hosts
  *   2. Gemini  — multi-voice, excellent multilingual coverage
- *   3. Edge    — keyless Google Translate voices, used when no API key is set
+ *   3. edge    — keyless Google Translate voices, used when no API key is set
  *
- * All three return MP3 bytes, which is what the audio pipeline expects.
+ * The keyless backend accepts a *language or region tag* (not a full voice
+ * name) and rejects text longer than 200 characters. Different regional tags
+ * select different voices, which is how the two podcast hosts end up with
+ * distinct-sounding voices without an API key.
  */
 
 import { env } from '@/lib/env';
 import { getChatProvider } from '@/lib/ai';
 import { UpstreamError } from '@/lib/ai/errors';
-import { getLanguage, hostVoices, type Language } from '@freelm/shared';
+import { getLanguage, type Language } from '@freelm/shared';
 
 export type TTSBackend = 'openai' | 'gemini' | 'edge';
 
 export interface SpeakOptions {
   /** Voice identifier for the active backend. */
   voice?: string;
+  /** BCP-47 language tag, used by providers that need it. */
   language?: string;
   speed?: number;
   instructions?: string;
@@ -26,24 +30,28 @@ export interface SpeakOptions {
 
 export interface VoiceSet {
   backend: TTSBackend;
+  /** Primary host voice. */
   hostA: string;
+  /** Secondary host voice. */
   hostB: string;
+  /** Voice used for narration (video overviews). */
   narrator: string;
+  /** Slight delivery change so the two hosts never sound identical. */
+  hostBSpeed?: number;
 }
 
-/** Decide which TTS backend to use and which voices to use with it. */
+/** The keyless endpoint rejects anything longer than this. */
+export const MAX_SEGMENT_CHARS = 190;
+
+/**
+ * Decide which TTS backend to use and which voices to use with it.
+ */
 export function resolveVoices(languageCode = 'en'): VoiceSet {
   const language: Language = getLanguage(languageCode);
-
   const backend = env.FREELM_TTS_BACKEND;
 
   if (backend === 'edge') {
-    return {
-      backend: 'edge',
-      hostA: edgeLocale(language),
-      hostB: edgeAlternateVoice(language),
-      narrator: edgeLocale(language),
-    };
+    return edgeVoices(language);
   }
 
   if (
@@ -55,15 +63,12 @@ export function resolveVoices(languageCode = 'en'): VoiceSet {
     return {
       backend: 'gemini',
       hostA: language.gemini ?? 'Kore',
-      hostB: 'Charon',
+      hostB: language.gemini === 'Kore' ? 'Charon' : 'Kore',
       narrator: language.gemini ?? 'Kore',
     };
   }
 
-  if (
-    backend === 'openai' ||
-    (backend === 'auto' && env.FREELM_OPENAI_API_KEY)
-  ) {
+  if (backend === 'openai' || (backend === 'auto' && env.FREELM_OPENAI_API_KEY)) {
     return {
       backend: 'openai',
       hostA: 'shimmer',
@@ -72,61 +77,37 @@ export function resolveVoices(languageCode = 'en'): VoiceSet {
     };
   }
 
-  if (backend === 'auto' && env.FREELM_AI_PROVIDER === 'openai-compatible') {
-    // An OpenAI-compatible endpoint may or may not expose /audio/speech, so
-    // the keyless backend is the safe default.
+  return edgeVoices(language);
+}
+
+/**
+ * Two keyless voices for a language.
+ *
+ * The primary voice uses the language's own regional tag; the secondary uses
+ * an alternate regional tag, which the service maps to a different voice.
+ * When a language has no alternate tag, the delivery speed is varied
+ * instead so the two hosts are still distinguishable.
+ */
+function edgeVoices(language: Language): VoiceSet {
+  const primary = language.bcp47;
+  const alternate = language.alt;
+
+  if (alternate && alternate !== primary) {
     return {
       backend: 'edge',
-      hostA: edgeLocale(language),
-      hostB: edgeAlternateVoice(language),
-      narrator: edgeLocale(language),
+      hostA: primary,
+      hostB: alternate,
+      narrator: primary,
     };
   }
 
   return {
     backend: 'edge',
-    hostA: edgeLocale(language),
-    hostB: edgeAlternateVoice(language),
-    narrator: edgeLocale(language),
+    hostA: primary,
+    hostB: primary,
+    narrator: primary,
+    hostBSpeed: 0.92,
   };
-}
-
-/**
- * The locale the keyless voice endpoint understands.
- *
- * The endpoint picks a voice from the locale (it rejects full Edge voice
- * names), so `en-US-AriaNeural` becomes `en-US`.
- */
-function edgeLocale(language: Language): string {
-  const voice = language.edge ?? 'en-US-AriaNeural';
-  const parts = voice.split('-');
-  if (parts.length >= 2) {
-    return `${parts[0]}-${parts[1]}`;
-  }
-  return language.bcp47;
-}
-
-/**
- * A second voice for the same language, for the two-host dialogue.
- *
- * The keyless Google Translate voice endpoint selects a voice from the
- * locale, so the two hosts use different regional variants of the same
- * language. That gives a genuinely different speaker for each side without
- * needing an API key.
- */
-function edgeAlternateVoice(language: Language): string {
-  const base = edgeLocale(language);
-  const region = base.split('-')[1] ?? 'US';
-  const alternatives: Record<string, string[]> = {
-    US: ['en-GB', 'en-AU', 'en-IN', 'en-CA', 'en-ZA'],
-    GB: ['en-US', 'en-AU', 'en-IN', 'en-CA', 'en-ZA'],
-    AU: ['en-US', 'en-GB', 'en-IN', 'en-CA'],
-    IN: ['en-US', 'en-GB', 'en-AU', 'en-CA'],
-    CA: ['en-US', 'en-GB', 'en-AU', 'en-IN'],
-    ZA: ['en-US', 'en-GB', 'en-AU'],
-  };
-  const list = alternatives[region] ?? ['en-US', 'en-GB', 'en-AU'];
-  return list[0] ?? base;
 }
 
 /**
@@ -184,8 +165,7 @@ async function speakGemini(text: string, voice: string): Promise<Buffer> {
 /**
  * Keyless Google Translate text-to-speech.
  *
- * The endpoint selects a voice from the locale in `tl` and returns MP3
- * bytes. It is free, needs no key, and speaks 100+ languages.
+ * `tl` is a language or region tag; the service picks a voice for it.
  */
 async function speakEdge(
   text: string,
@@ -195,9 +175,9 @@ async function speakEdge(
 ): Promise<Buffer> {
   const url = new URL('https://translate.google.com/translate_tts');
   url.searchParams.set('ie', 'UTF-8');
-  url.searchParams.set('client', 'gtx');
+  url.searchParams.set('client', 'tw-ob');
   url.searchParams.set('tl', voice || language.bcp47);
-  url.searchParams.set('q', text.slice(0, 1800));
+  url.searchParams.set('q', text.slice(0, MAX_SEGMENT_CHARS));
 
   if (options.speed !== undefined) {
     url.searchParams.set('ttsspeed', String(options.speed));
@@ -231,20 +211,51 @@ async function speakEdge(
   return buffer;
 }
 
-/** Split a long script into speakable segments. */
-export function segmentForSpeech(text: string, maxChars = 1800): string[] {
+/**
+ * Split a long script into speakable segments.
+ *
+ * The keyless backend caps a request at 200 characters, so segments are kept
+ * well under that and split on sentence boundaries.
+ */
+export function segmentForSpeech(
+  text: string,
+  maxChars: number = MAX_SEGMENT_CHARS,
+): string[] {
   if (text.length <= maxChars) return [text];
+
   const sentences = text.split(/(?<=[.!?])\s+/);
   const segments: string[] = [];
   let current = '';
+
+  const push = () => {
+    if (current.trim()) segments.push(current.trim());
+    current = '';
+  };
+
   for (const sentence of sentences) {
-    if (current.length + sentence.length + 1 > maxChars && current) {
-      segments.push(current);
-      current = sentence;
-    } else {
-      current = current ? `${current} ${sentence}` : sentence;
+    if (sentence.length > maxChars) {
+      // A single very long sentence: split on commas and spaces.
+      push();
+      const words = sentence.split(' ');
+      let piece = '';
+      for (const word of words) {
+        if (piece.length + word.length + 1 > maxChars) {
+          if (piece) segments.push(piece.trim());
+          piece = word;
+        } else {
+          piece = piece ? `${piece} ${word}` : word;
+        }
+      }
+      if (piece) segments.push(piece.trim());
+      continue;
     }
+
+    if (current.length + sentence.length + 1 > maxChars) {
+      push();
+    }
+    current = current ? `${current} ${sentence}` : sentence;
   }
-  if (current) segments.push(current);
-  return segments;
+  push();
+
+  return segments.length > 0 ? segments : [text];
 }
