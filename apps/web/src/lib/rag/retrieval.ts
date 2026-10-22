@@ -73,7 +73,7 @@ export async function retrieveChunks(
 ): Promise<RetrievedChunk[]> {
   const provider = getEmbeddingProvider();
   const modelName = options.modelName ?? provider.info.embeddingModel;
-  const limit = Math.min(Math.max(options.limit ?? 12, 1), 40);
+  const limit = Math.min(Math.max(options.limit ?? 12, 1), 200);
 
   const scope = await resolveScope(options.notebookId, options.sourceIds);
   if (scope.length === 0) return [];

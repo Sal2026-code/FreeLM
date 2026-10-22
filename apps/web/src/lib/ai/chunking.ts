@@ -53,6 +53,74 @@ export function estimateTokens(text: string): number {
   return Math.ceil(text.length / 4);
 }
 
+/**
+ * The largest paragraph the chunker will hold in memory at once.
+ *
+ * A single 60 MB "paragraph" (a minified file, a book with no line breaks)
+ * must never be processed as one string: V8's lookbehind regex engine
+ * overflows the stack on very long inputs, and the intermediate arrays are
+ * enormous. Long paragraphs are therefore split into bounded pieces first.
+ */
+const MAX_PARAGRAPH_CHARS = 20_000;
+
+/**
+ * Split text into sentences without a lookbehind regex.
+ *
+ * `split(/(?<=[.!?])\s+/)` overflows the call stack on very long strings, so
+ * the boundary is found with a manual scan instead.
+ */
+export function splitSentences(text: string): string[] {
+  const sentences: string[] = [];
+  let start = 0;
+
+  for (let index = 0; index < text.length; index += 1) {
+    const char = text[index];
+    if (char !== '.' && char !== '!' && char !== '?') continue;
+
+    // Consume any run of terminators, then require whitespace after it.
+    let end = index + 1;
+    while (end < text.length && '.!?' === text[end]) end += 1;
+    if (end >= text.length || !/\s/.test(text[end] ?? '')) {
+      index = end - 1;
+      continue;
+    }
+
+    const sentence = text.slice(start, end).trim();
+    if (sentence) sentences.push(sentence);
+    start = end;
+    while (start < text.length && /\s/.test(text[start] ?? '')) start += 1;
+    index = start - 1;
+  }
+
+  const tail = text.slice(start).trim();
+  if (tail) sentences.push(tail);
+
+  return sentences;
+}
+
+/**
+ * Break a long paragraph into pieces of at most `MAX_PARAGRAPH_CHARS`,
+ * preferring sentence boundaries.
+ */
+function splitLongParagraph(paragraph: string): string[] {
+  if (paragraph.length <= MAX_PARAGRAPH_CHARS) return [paragraph];
+
+  const pieces: string[] = [];
+  let current = '';
+
+  for (const sentence of splitSentences(paragraph)) {
+    if (current.length + sentence.length + 1 > MAX_PARAGRAPH_CHARS) {
+      if (current) pieces.push(current);
+      current = sentence;
+    } else {
+      current = current ? `${current} ${sentence}` : sentence;
+    }
+  }
+  if (current) pieces.push(current);
+
+  return pieces;
+}
+
 interface Section {
   title: string | null;
   paragraphs: string[];
@@ -94,7 +162,13 @@ function splitIntoSections(text: string, pageNumber: number | null): Section[] {
   const flushParagraph = () => {
     const paragraph = buffer.join('\n').trim();
     buffer = [];
-    if (paragraph) current.paragraphs.push(paragraph);
+    if (paragraph) {
+      // Keep every paragraph bounded so one enormous block of text cannot
+      // blow up the chunker.
+      for (const piece of splitLongParagraph(paragraph)) {
+        current.paragraphs.push(piece);
+      }
+    }
   };
 
   const flushSection = () => {
@@ -196,9 +270,17 @@ export function chunkDocument(
     const emit = (body: string, sectionTitle: string | null) => {
       const trimmed = body.trim();
       if (!trimmed) return;
-      const start = Math.max(0, text.indexOf(trimmed.slice(0, 64), cursor - 64));
+
+      // Locate the chunk in the original text using a *bounded* window
+      // search. A plain `indexOf` over a 60 MB document would be O(n) per
+      // chunk, which is far too slow for large sources.
+      const anchor = trimmed.slice(0, 64);
+      const window = text.slice(cursor, cursor + 8192);
+      const relative = window.indexOf(anchor);
+      const start = relative === -1 ? cursor : cursor + relative;
       const end = start + trimmed.length;
       cursor = Math.max(cursor, end);
+
       chunks.push({
         text: trimmed,
         chunkIndex: chunkIndex++,
@@ -221,7 +303,7 @@ export function chunkDocument(
           bufferParts = [];
           bufferTokens = 0;
         }
-        const sentences = groupText.split(/(?<=[.!?])\s+/);
+        const sentences = splitSentences(groupText);
         let piece = '';
         let pieceTokens = 0;
         for (const sentence of sentences) {

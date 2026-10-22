@@ -213,6 +213,27 @@ async function extractSourceText(
   const metadata = (source.metadata ?? {}) as Record<string, unknown>;
   const preExtracted = metadata.preExtracted === true;
 
+  // An uploaded file always wins. A `.txt`, `.md` or `.csv` upload has the
+  // same type as pasted text, so the presence of a stored file — not the
+  // type — decides how the content is read.
+  if (source.storageKey) {
+    const storage = getStorage();
+    const buffer = await storage.get(source.storageKey);
+    const fileName =
+      (metadata.originalName as string | undefined) ??
+      (metadata.mimeType as string | undefined) ??
+      'upload';
+
+    if (source.type === 'pdf') return extractPdf(buffer);
+    if (source.type === 'docx') return extractDocx(buffer);
+    if (source.type === 'pptx') return extractPptx(buffer);
+    if (source.type === 'epub') return extractEpub(buffer);
+    if (source.type === 'csv') return extractSpreadsheet(buffer, fileName);
+    if (source.type === 'image') return extractImageOcr(buffer);
+    if (source.type === 'audio') return extractAudio(buffer, fileName);
+    return extractPlainText(buffer);
+  }
+
   if (preExtracted && source.extractedText) {
     return {
       text: source.extractedText,
@@ -262,24 +283,7 @@ async function extractSourceText(
     }
 
     default: {
-      if (!source.storageKey) {
-        throw new Error('This source has no uploaded file.');
-      }
-      const storage = getStorage();
-      const buffer = await storage.get(source.storageKey);
-      const fileName =
-        (metadata.originalName as string | undefined) ??
-        (metadata.mimeType as string | undefined) ??
-        'upload';
-
-      if (source.type === 'pdf') return extractPdf(buffer);
-      if (source.type === 'docx') return extractDocx(buffer);
-      if (source.type === 'pptx') return extractPptx(buffer);
-      if (source.type === 'epub') return extractEpub(buffer);
-      if (source.type === 'csv') return extractSpreadsheet(buffer, fileName);
-      if (source.type === 'image') return extractImageOcr(buffer);
-      if (source.type === 'audio') return extractAudio(buffer, fileName);
-      return extractPlainText(buffer);
+      throw new Error('This source has no uploaded file.');
     }
   }
 }

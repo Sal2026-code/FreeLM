@@ -71,7 +71,7 @@ export async function askQuestion(options: AskOptions): Promise<AskResult> {
   const customInstructions = settings?.customInstructions ?? '';
   const retrievalK = Math.min(
     Math.max(settings?.retrievalK ?? env.FREELM_RETRIEVAL_K, 4),
-    40,
+    200,
   );
 
   // --- History -------------------------------------------------------------
@@ -80,7 +80,7 @@ export async function askQuestion(options: AskOptions): Promise<AskResult> {
     .from(schema.messages)
     .where(eq(schema.messages.threadId, threadId))
     .orderBy(desc(schema.messages.createdAt))
-    .limit(12);
+    .limit(env.FREELM_HISTORY_TURNS);
 
   const history = historyRows
     .reverse()

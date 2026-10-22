@@ -319,6 +319,12 @@ export function SourcesPane({
               Click Add sources to add PDFs, websites, new articles, or audio
               files. Or import a file directly from Google Drive.
             </p>
+            <p className="flex items-center gap-1 text-[11.5px] text-success">
+              <span className="material-symbols-rounded text-[14px]">
+                all_inclusive
+              </span>
+              Unlimited sources — no count, size or length limit
+            </p>
           </div>
         ) : (
           <ul className="space-y-0.5">

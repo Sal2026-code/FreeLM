@@ -59,7 +59,14 @@ const envSchema = z.object({
   FREELM_TITLE_MODEL: z.string().default(''),
 
   FREELM_EMBEDDING_DIM: z.coerce.number().int().positive().default(1536),
-  FREELM_RETRIEVAL_K: z.coerce.number().int().min(4).max(40).default(12),
+  FREELM_RETRIEVAL_K: z.coerce.number().int().min(4).max(200).default(12),
+
+  /**
+   * How many previous turns are sent to the model for context. This is a
+   * context-window budget, not a usage limit — chat history itself is kept
+   * in full.
+   */
+  FREELM_HISTORY_TURNS: z.coerce.number().int().min(1).max(200).default(50),
 
   FREELM_BRAVE_API_KEY: z.string().default(''),
   FREELM_TAVILY_API_KEY: z.string().default(''),
@@ -78,8 +85,12 @@ const envSchema = z.object({
   FREELM_GOOGLE_DRIVE_CLIENT_ID: z.string().default(''),
   FREELM_GOOGLE_DRIVE_CLIENT_SECRET: z.string().default(''),
 
-  FREELM_MAX_SOURCE_MB: z.coerce.number().int().positive().default(200),
-  FREELM_MAX_SOURCE_WORDS: z.coerce.number().int().positive().default(500_000),
+  /**
+   * Optional operator ceilings. Both default to 0, which means **unlimited** —
+   * FreeLM never refuses a source because of its size or length.
+   */
+  FREELM_MAX_SOURCE_MB: z.coerce.number().int().min(0).default(0),
+  FREELM_MAX_SOURCE_WORDS: z.coerce.number().int().min(0).default(0),
   FREELM_ENABLE_SANDBOX: z
     .enum(['true', 'false'])
     .default('true')

@@ -79,9 +79,11 @@ export async function POST(
     const created: unknown[] = [];
 
     for (const file of files) {
-      if (file.size > maxBytes) {
+      // FreeLM has no upload limit. `FREELM_MAX_SOURCE_MB` exists only so
+      // an operator can impose their own ceiling; 0 means unlimited.
+      if (maxBytes > 0 && file.size > maxBytes) {
         return badRequest(
-          `"${file.name}" is larger than the ${env.FREELM_MAX_SOURCE_MB} MB limit for a single file.`,
+          `"${file.name}" is larger than the ${env.FREELM_MAX_SOURCE_MB} MB limit set on this server.`,
         );
       }
 

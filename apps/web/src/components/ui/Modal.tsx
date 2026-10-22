@@ -22,8 +22,8 @@ export interface ModalProps {
 /**
  * A centered, dark modal — the pattern used by every "Customize …" dialog.
  *
- * The panel scales and fades in, and animates back out on close, so the
- * dismissal reads as a reversal rather than a cut.
+ * Both the scrim and the panel animate: the scrim fades, the panel scales
+ * and rises into place, and the whole thing reverses on close.
  */
 export function Modal({
   open,
@@ -35,7 +35,7 @@ export function Modal({
   width = 'max-w-2xl',
   persistent,
 }: ModalProps) {
-  const { mounted, state } = usePresence(open, 200);
+  const { mounted, state } = usePresence(open, 160);
   const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -62,15 +62,17 @@ export function Modal({
   const entering = state === 'enter';
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4 sm:p-8">
+    <div
+      className={cn(
+        'fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4 sm:p-8',
+        entering ? 'anim-fade-in' : 'anim-fade-out',
+      )}
+    >
       <button
         type="button"
         aria-label="Close dialog"
         onClick={() => (persistent ? undefined : onClose())}
-        className={cn(
-          'fixed inset-0 cursor-default bg-black/70 backdrop-blur-sm',
-          entering ? 'anim-fade-in' : 'anim-fade-out',
-        )}
+        className="fixed inset-0 cursor-default bg-black/70 backdrop-blur-sm"
         tabIndex={-1}
       />
       <div
@@ -99,7 +101,7 @@ export function Modal({
               type="button"
               onClick={onClose}
               aria-label="Close"
-              className="icon-button press -mr-1 -mt-1"
+              className="icon-button -mr-1 -mt-1"
             >
               <span className="material-symbols-rounded text-[20px]" aria-hidden>
                 close
@@ -152,7 +154,7 @@ export function ConfirmDialog({
           <button
             type="button"
             onClick={onClose}
-            className="press inline-flex h-9 items-center rounded-pill border border-hairline bg-surface-2 px-4 text-sm text-neutral-200 transition hover:bg-surface-3"
+            className="inline-flex h-9 items-center rounded-pill border border-hairline bg-surface-2 px-4 text-sm text-neutral-200 transition hover:bg-surface-3"
           >
             Cancel
           </button>
@@ -163,7 +165,7 @@ export function ConfirmDialog({
               onClose();
             }}
             className={cn(
-              'press inline-flex h-9 items-center rounded-pill px-4 text-sm font-medium text-white transition',
+              'inline-flex h-9 items-center rounded-pill px-4 text-sm font-medium text-white transition',
               destructive
                 ? 'bg-danger/80 hover:bg-danger'
                 : 'bg-accent hover:bg-accent-hover',

@@ -6,7 +6,7 @@
  * Searches notebooks, sources and notes the caller can reach.
  */
 
-import { and, eq, ilike, or } from 'drizzle-orm';
+import { and, desc, eq, ilike, or } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 
 import { db, schema } from '@/lib/db';
@@ -45,7 +45,7 @@ export async function GET(request: Request): Promise<NextResponse> {
       })
       .from(schema.notebooks)
       .where(and(ownsNotebook, ilike(schema.notebooks.title, pattern)))
-      .limit(10);
+      .orderBy(desc(schema.notebooks.updatedAt));
 
     const sourceRows = await db
       .select({
@@ -61,7 +61,7 @@ export async function GET(request: Request): Promise<NextResponse> {
           ilike(schema.sources.title, pattern),
         ),
       )
-      .limit(10);
+      .orderBy(desc(schema.sources.updatedAt));
 
     const noteRows = await db
       .select({
@@ -77,7 +77,7 @@ export async function GET(request: Request): Promise<NextResponse> {
           ilike(schema.notes.title, pattern),
         ),
       )
-      .limit(10);
+      .orderBy(desc(schema.notes.updatedAt));
 
     const results = [
       ...notebookRows.map((row) => ({

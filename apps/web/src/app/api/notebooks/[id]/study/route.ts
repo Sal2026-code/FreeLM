@@ -29,8 +29,7 @@ export async function GET(
       .select()
       .from(schema.studySessions)
       .where(eq(schema.studySessions.notebookId, context.params.id))
-      .orderBy(desc(schema.studySessions.createdAt))
-      .limit(50);
+      .orderBy(desc(schema.studySessions.createdAt));
 
     return NextResponse.json(
       rows.map((row) => ({

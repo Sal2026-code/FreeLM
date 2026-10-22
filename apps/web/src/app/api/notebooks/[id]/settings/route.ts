@@ -102,7 +102,9 @@ export async function PATCH(
       patch.defaultScope = body.defaultScope;
     }
     if (typeof body.retrievalK === 'number') {
-      patch.retrievalK = Math.min(Math.max(Math.round(body.retrievalK), 4), 40);
+      // FreeLM does not cap retrieval depth — the only bound is what the
+      // provider's context window can hold.
+      patch.retrievalK = Math.min(Math.max(Math.round(body.retrievalK), 4), 200);
     }
     if (typeof body.outputLanguage === 'string' && body.outputLanguage) {
       patch.outputLanguage = body.outputLanguage.slice(0, 16);

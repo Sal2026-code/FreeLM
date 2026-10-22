@@ -362,6 +362,14 @@ export function AddSourcesModal({
             <Spinner size={12} /> Working…
           </p>
         ) : null}
+
+        <p className="flex items-center gap-2 border-t border-hairline pt-3 text-[12px] text-neutral-500">
+          <span className="material-symbols-rounded text-[16px] text-success">
+            all_inclusive
+          </span>
+          Unlimited: no limit on the number of sources, their size, or their
+          length. Every Studio tool is free and unlocked.
+        </p>
       </div>
     </Modal>
   );

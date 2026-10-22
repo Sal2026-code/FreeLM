@@ -13,9 +13,58 @@ as **both a website and a mobile app** and shares one backend.
 
 ---
 
+## No limits
+
+FreeLM imposes **no usage limits at all**. Every limit that Google has — and
+that other clones copy — is removed:
+
+| Limit | Google Notebook | FreeLM |
+|---|---|---|
+| Sources per notebook | 50 (600 on paid) | **Unlimited** |
+| Notebooks | 100 | **Unlimited** |
+| Size of one source | 200 MB | **Unlimited** |
+| Words in one source | 500,000 | **Unlimited** |
+| Files per upload | Bounded | **Unlimited** |
+| Audio Overviews | Metered | **Unlimited** |
+| Video Overviews | Metered | **Unlimited** |
+| Quizzes, flashcards, decks, reports | Metered | **Unlimited** |
+| Deep Research runs | Metered | **Unlimited** |
+| Studio tools | 38 | **All 38, none locked** |
+| Languages | 80+ | **80+** |
+
+There is no code path that refuses a request because of a count, a size or a
+plan. The only ceilings in the code are ones *you* can set yourself on your own
+server (`FREELM_MAX_SOURCE_MB`, `FREELM_MAX_SOURCE_WORDS`) — both default to `0`,
+which means unlimited.
+
+What you *do* pay for is your own inference: whatever your chosen model
+provider charges per token. FreeLM itself costs nothing to run, and the
+built-in keyless backends mean you can run the whole thing at zero cost.
+
+---
+
+## Motion
+
+The interface uses a single motion system built on Material 3's "emphasized"
+easing family — the same curves Google's own interfaces use.
+
+- **Web** — 19 keyframes and a token layer (`src/lib/motion.ts`): fade, scale,
+  pop, slide, message-in, caret-blink, check-draw, ring-fill, card-flip,
+  progress, ripple, float, shimmer, pulse-ring, spin. Modals and menus animate
+  *both ways* (the element stays mounted for the exit transition via
+  `usePresence`), and buttons ripple on press.
+- **Mobile** — the same durations and easing intent, implemented with React
+  Native's `Animated` API (`src/animations.ts`), so no extra dependency.
+
+Both apps animate identically because both read the same numbers.
+
+---
+
 ## Table of contents
 
 - [What it does](#what-it-does)
+- [No limits](#no-limits)
+- [Motion](#motion)
 - [Feature parity with Gemini Notebook](#feature-parity-with-gemini-notebook)
 - [Architecture](#architecture)
 - [Quick start](#quick-start)
@@ -45,9 +94,13 @@ FreeLM is a three-pane workspace, exactly like the original:
 |---|---|
 | **Number of sources per notebook** | **Unlimited.** There is no source-count check anywhere in the schema, the API or the UI. |
 | **Number of notebooks** | Unlimited |
-| **Size of a single file** | 200 MB (`FREELM_MAX_SOURCE_MB`) — the same ceiling Google uses, and it is configurable |
-| **Words in a single source** | 500,000 (`FREELM_MAX_SOURCE_WORDS`) — also configurable |
+| **Size of a single file** | **Unlimited.** `FREELM_MAX_SOURCE_MB` exists only so *you* can cap your own server; it defaults to `0` (unlimited). |
+| **Words in a single source** | **Unlimited.** `FREELM_MAX_SOURCE_WORDS` — same, defaults to `0`. |
+| **Files per upload** | Unlimited |
 | **Chats, threads, notes, Studio outputs** | Unlimited |
+| **Search results** | Unlimited |
+| **Retrieval depth** | 4–200 passages, configurable per notebook |
+| **Studio tools** | All 38, none locked |
 
 The per-file ceilings exist because a single document has to be extracted,
 chunked and embedded in one pass; raise them in `.env.local` if you need
@@ -256,7 +309,10 @@ full list.
 | `FREELM_EMBEDDING_PROVIDER` | `auto` | `auto` \| `local` \| `openai` \| `gemini` \| `openai-compatible`. `local` needs no key. |
 | `FREELM_TTS_BACKEND` | `auto` | `auto` \| `edge` \| `openai` \| `gemini`. `edge` needs no key. |
 | `FREELM_EMBEDDING_DIM` | `1536` | pgvector column width |
-| `FREELM_RETRIEVAL_K` | `12` | Default retrieval depth (4–40) |
+| `FREELM_RETRIEVAL_K` | `12` | Default retrieval depth (4–200) |
+| `FREELM_HISTORY_TURNS` | `50` | Previous turns sent to the model for context (a context-window budget, not a usage limit) |
+| `FREELM_MAX_SOURCE_MB` | `0` | `0` = unlimited. Set a number only to cap your own server. |
+| `FREELM_MAX_SOURCE_WORDS` | `0` | `0` = unlimited. |
 | `FREELM_BRAVE_API_KEY` / `FREELM_TAVILY_API_KEY` | — | Optional: upgrades web search. Works keyless without them. |
 | `FREELM_GOOGLE_CLIENT_ID` / `_SECRET` | — | Optional: enables Google sign-in and Drive import |
 | `FREELM_STORAGE_DRIVER` | `local` | `local` or `s3` |
