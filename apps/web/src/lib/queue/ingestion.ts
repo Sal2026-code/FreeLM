@@ -141,18 +141,25 @@ export async function ingestSource(
     await db.delete(schema.chunks).where(eq(schema.chunks.sourceId, sourceId));
 
     if (pageChunks.length > 0) {
-      await db.insert(schema.chunks).values(
-        pageChunks.map((chunk) => ({
-          sourceId,
-          chunkIndex: chunk.chunkIndex,
-          sectionTitle: chunk.sectionTitle,
-          pageNumber: chunk.pageNumber,
-          text: chunk.text,
-          tokenCount: chunk.tokenCount,
-          charStart: chunk.charStart,
-          charEnd: chunk.charEnd,
-        })),
-      );
+      // A large source can produce tens of thousands of chunks. Inserting them
+      // in one statement builds a multi-megabyte query string, which overflows
+      // the stack — so they go in in batches.
+      const INSERT_BATCH = 500;
+      for (let offset = 0; offset < pageChunks.length; offset += INSERT_BATCH) {
+        const batch = pageChunks.slice(offset, offset + INSERT_BATCH);
+        await db.insert(schema.chunks).values(
+          batch.map((chunk) => ({
+            sourceId,
+            chunkIndex: chunk.chunkIndex,
+            sectionTitle: chunk.sectionTitle,
+            pageNumber: chunk.pageNumber,
+            text: chunk.text,
+            tokenCount: chunk.tokenCount,
+            charStart: chunk.charStart,
+            charEnd: chunk.charEnd,
+          })),
+        );
+      }
     }
 
     // --- 3. Embed -----------------------------------------------------------

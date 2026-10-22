@@ -1,14 +1,15 @@
 import type { Metadata, Viewport } from 'next';
-import { Inter } from 'next/font/google';
 
 import './globals.css';
 
-const inter = Inter({
-  subsets: ['latin'],
-  variable: '--font-sans',
-  display: 'swap',
-});
-
+/**
+ * No `next/font/google` here on purpose.
+ *
+ * `next/font` downloads the font at *build* time, which makes the build fail
+ * or hang on a machine without internet access — fatal for a self-hosted
+ * app. The system font stack is used instead, and Material Symbols is loaded
+ * from the browser at runtime.
+ */
 export const metadata: Metadata = {
   title: 'FreeLM — open-source research assistant',
   description:
@@ -40,7 +41,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${inter.variable} dark`} suppressHydrationWarning>
+    <html lang="en" className="dark" suppressHydrationWarning>
       <head>
         <link
           rel="stylesheet"

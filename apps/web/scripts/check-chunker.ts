@@ -1,9 +1,25 @@
-import { chunkDocument, splitSentences } from '../src/lib/ai/chunking';
+import { readFileSync } from 'node:fs';
 
-const block = 'Retrieval augmented generation grounds every answer in a cited passage. ';
-const big = block.repeat(1_000_000); // ~60 MB, no line breaks
+import { chunkDocument } from '../src/lib/ai/chunking';
+
+const file = process.argv[2];
+if (!file) {
+  console.error('usage: tsx scripts/check-chunker.ts <file>');
+  process.exit(1);
+}
+
+const buffer = readFileSync(file);
+const text = buffer.toString('utf8');
+console.log(`file: ${(buffer.length / 1024 / 1024).toFixed(1)} MB, ${text.length} chars`);
+
 const t0 = Date.now();
-const chunks = chunkDocument({ text: big });
-console.log('60MB single-paragraph ->', chunks.length, 'chunks in', Date.now() - t0, 'ms');
-console.log('first chunk tokens:', chunks[0]?.tokenCount, 'last index:', chunks[chunks.length - 1]?.chunkIndex);
-console.log('sentences split ok:', splitSentences('One. Two! Three? Four.').length);
+try {
+  const chunks = chunkDocument({ text });
+  console.log(
+    `OK -> ${chunks.length} chunks in ${Date.now() - t0} ms; first=${chunks[0]?.tokenCount} tokens`,
+  );
+} catch (error) {
+  console.error('FAILED after', Date.now() - t0, 'ms');
+  console.error(error instanceof Error ? error.stack : error);
+  process.exit(1);
+}
