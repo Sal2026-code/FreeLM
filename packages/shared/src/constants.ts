@@ -120,21 +120,42 @@ export const SOURCE_TYPE_META: Record<
   csv: { label: 'CSV', icon: 'table_view', color: '#81c995' },
 };
 
+/**
+ * FreeLM accepts **any** file type.
+ *
+ * These lists are informational only — they describe the formats FreeLM can
+ * extract text from. The upload itself is never restricted by extension or
+ * MIME type, and never by size.
+ */
 export const ACCEPTED_UPLOAD_EXTENSIONS = [
   '.pdf',
   '.txt',
   '.md',
   '.csv',
+  '.tsv',
   '.docx',
   '.pptx',
+  '.odt',
+  '.odp',
+  '.ods',
+  '.rtf',
   '.epub',
+  '.html',
+  '.htm',
+  '.xml',
+  '.json',
+  '.yaml',
+  '.yml',
   '.png',
   '.jpg',
   '.jpeg',
   '.webp',
   '.gif',
   '.bmp',
+  '.tif',
+  '.tiff',
   '.heic',
+  '.avif',
   '.mp3',
   '.wav',
   '.m4a',
@@ -142,19 +163,13 @@ export const ACCEPTED_UPLOAD_EXTENSIONS = [
   '.ogg',
   '.opus',
   '.flac',
+  '.mp4',
+  '.mov',
+  '.webm',
 ];
 
-export const ACCEPTED_UPLOAD_MIME = [
-  'application/pdf',
-  'text/plain',
-  'text/markdown',
-  'text/csv',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-  'application/epub+zip',
-  'image/*',
-  'audio/*',
-];
+/** The upload input accepts every file type. */
+export const ACCEPTED_UPLOAD_MIME = '*/*';
 
 // ---------------------------------------------------------------------------
 // Studio tool registry

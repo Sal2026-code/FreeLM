@@ -35,6 +35,25 @@ export function extractPlainText(buffer: Buffer): ExtractedDocument {
   };
 }
 
+/**
+ * True when a buffer looks like binary rather than readable text.
+ *
+ * FreeLM accepts any file type, so an unsupported binary has to be reported
+ * honestly instead of being decoded into mojibake.
+ */
+export function looksBinary(buffer: Buffer): boolean {
+  const sample = buffer.subarray(0, 8000);
+  if (sample.length === 0) return false;
+
+  let control = 0;
+  for (const byte of sample) {
+    // Bytes that are neither printable ASCII nor common whitespace.
+    if (byte === 0) return true;
+    if (byte < 9 || (byte > 13 && byte < 32) || byte === 127) control += 1;
+  }
+  return control / sample.length > 0.05;
+}
+
 function countWords(text: string): number {
   const trimmed = text.trim();
   if (!trimmed) return 0;

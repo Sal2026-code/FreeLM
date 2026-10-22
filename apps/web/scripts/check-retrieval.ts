@@ -1,7 +1,7 @@
 import { pool } from '../src/lib/db';
 import { retrieveChunks } from '../src/lib/rag/retrieval';
 
-const notebookId = process.argv[2];
+const notebookId = process.argv[2] ?? '';
 const query = process.argv[3] ?? 'chunking preserves context across boundaries';
 
 if (!notebookId) {

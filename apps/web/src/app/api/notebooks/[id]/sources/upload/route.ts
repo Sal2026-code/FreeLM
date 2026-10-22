@@ -1,139 +1,163 @@
 /**
- * FreeLM — file upload.
+ * FreeLM — upload a source.
  *
  * POST /api/notebooks/:id/sources/upload   (multipart/form-data)
  *
- * Files are stored, a source row is created, and an ingestion job is queued.
- * There is no limit on the *number* of sources.
+ * The body is streamed to disk and split into parts on disk, so the server
+ * never holds the file in memory. Any file type is accepted and there is no
+ * size limit unless the operator sets one.
  */
+
+import { randomUUID } from 'node:crypto';
+import path from 'node:path';
 
 import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 
-import { db, schema, type SourceType } from '@/lib/db';
+import { db, schema } from '@/lib/db';
 import { getOrCreateSession } from '@/lib/auth/session';
 import { badRequest, jsonError, resolveNotebook } from '@/lib/api/helpers';
 import { enqueueIngestion } from '@/lib/queue';
 import { buildStorageKey, getStorage } from '@/lib/storage';
 import { env } from '@/lib/env';
+import { detectSourceType } from '@/lib/ingest/detect';
+import {
+  makeTempDir,
+  MultipartParser,
+  parseBoundary,
+  streamToTempFile,
+  type UploadedFile,
+} from '@/lib/upload/multipart';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
 
-const EXTENSION_TYPES: Record<string, SourceType> = {
-  '.pdf': 'pdf',
-  '.txt': 'text',
-  '.md': 'text',
-  '.csv': 'csv',
-  '.docx': 'docx',
-  '.pptx': 'pptx',
-  '.epub': 'epub',
-  '.png': 'image',
-  '.jpg': 'image',
-  '.jpeg': 'image',
-  '.webp': 'image',
-  '.gif': 'image',
-  '.bmp': 'image',
-  '.heic': 'image',
-  '.tif': 'image',
-  '.tiff': 'image',
-  '.mp3': 'audio',
-  '.wav': 'audio',
-  '.m4a': 'audio',
-  '.aac': 'audio',
-  '.ogg': 'audio',
-  '.opus': 'audio',
-  '.flac': 'audio',
-};
-
-function typeForFile(name: string, mimeType: string): SourceType {
-  const lower = name.toLowerCase();
-  const dot = lower.lastIndexOf('.');
-  const extension = dot === -1 ? '' : lower.slice(dot);
-  if (EXTENSION_TYPES[extension]) return EXTENSION_TYPES[extension]!;
-  if (mimeType.startsWith('image/')) return 'image';
-  if (mimeType.startsWith('audio/')) return 'audio';
-  if (mimeType === 'application/pdf') return 'pdf';
-  return 'file';
-}
+/** One terabyte, in bytes. */
+const TERABYTE = 1024 * 1024 * 1024 * 1024;
 
 export async function POST(
   request: Request,
   context: { params: { id: string } },
 ): Promise<NextResponse> {
+  const session = await getOrCreateSession();
+  const notebookId = context.params.id;
+  const resolved = await resolveNotebook(notebookId, session);
+  if (!resolved.ok) return resolved.response;
+
+  const contentType = request.headers.get('content-type');
+  const boundary = parseBoundary(contentType);
+
+  if (!boundary || !request.body) {
+    return badRequest(
+      'Send the file as multipart/form-data with a "files" field.',
+      'NOT_MULTIPART',
+    );
+  }
+
+  // The operator's ceiling. 0 means unlimited; the default is one terabyte.
+  const maxBytes =
+    env.FREELM_MAX_SOURCE_BYTES > 0
+      ? env.FREELM_MAX_SOURCE_BYTES
+      : TERABYTE;
+
+  const tempDir = await makeTempDir();
+  let parsed: Awaited<ReturnType<MultipartParser['parse']>> | null = null;
+
   try {
-    const session = await getOrCreateSession();
-    const notebookId = context.params.id;
-    const resolved = await resolveNotebook(notebookId, session);
-    if (!resolved.ok) return resolved.response;
+    // 1. Stream the whole body to disk — never into memory.
+    const raw = await streamToTempFile(request.body, tempDir);
 
-    const form = await request.formData();
-    const files = form.getAll('files').filter((entry): entry is File => entry instanceof File);
+    // 2. Split it into parts, still on disk.
+    const parser = new MultipartParser({
+      rawPath: raw.path,
+      boundary,
+      tempDir,
+      maxFileBytes: maxBytes,
+    });
+    parsed = await parser.parse();
 
-    if (files.length === 0) {
-      return badRequest('Choose at least one file to upload.');
+    if (parsed.files.length === 0) {
+      return badRequest('No file was included in the upload.');
     }
 
-    const maxBytes = env.FREELM_MAX_SOURCE_MB * 1024 * 1024;
     const storage = getStorage();
     const created: unknown[] = [];
 
-    for (const file of files) {
-      // FreeLM has no upload limit. `FREELM_MAX_SOURCE_MB` exists only so
-      // an operator can impose their own ceiling; 0 means unlimited.
-      if (maxBytes > 0 && file.size > maxBytes) {
-        return badRequest(
-          `"${file.name}" is larger than the ${env.FREELM_MAX_SOURCE_MB} MB limit set on this server.`,
-        );
-      }
-
-      const buffer = Buffer.from(await file.arrayBuffer());
-      const type = typeForFile(file.name, file.type);
-
-      const [source] = await db
-        .insert(schema.sources)
-        .values({
-          notebookId,
-          title: file.name.replace(/\.[^.]+$/, ''),
-          type,
-          status: 'uploaded',
-          progress: 0,
-          metadata: {
-            originalName: file.name,
-            mimeType: file.type || 'application/octet-stream',
-            sizeBytes: file.size,
-          },
-        })
-        .returning();
-
-      const key = buildStorageKey(notebookId, source!.id, file.name);
-      await storage.put(key, buffer, file.type || 'application/octet-stream');
-
-      await db
-        .update(schema.sources)
-        .set({ storageKey: key })
-        .where(eq(schema.sources.id, source!.id));
-
-      await enqueueIngestion({ sourceId: source!.id, notebookId });
-
-      created.push({
-        id: source!.id,
+    for (const file of parsed.files) {
+      const createdSource = await storeFile({
+        file,
         notebookId,
-        title: source!.title,
-        type: source!.type,
-        status: 'uploaded',
-        progress: 0,
-        error: null,
-        metadata: source!.metadata,
-        labelIds: [],
-        chunkCount: 0,
-        createdAt: source!.createdAt.toISOString(),
-        updatedAt: source!.updatedAt.toISOString(),
+        storage,
+        maxBytes,
       });
+      created.push(createdSource);
     }
 
     return NextResponse.json(created);
   } catch (error) {
     return jsonError(error);
+  } finally {
+    await parsed?.cleanup();
+    const { rm } = await import('node:fs/promises');
+    await rm(tempDir, { recursive: true, force: true }).catch(() => undefined);
   }
+}
+
+async function storeFile({
+  file,
+  notebookId,
+  storage,
+  maxBytes,
+}: {
+  file: UploadedFile;
+  notebookId: string;
+  storage: ReturnType<typeof getStorage>;
+  maxBytes: number;
+}) {
+  const meta = detectSourceType(file.filename, file.contentType);
+
+  const [source] = await db
+    .insert(schema.sources)
+    .values({
+      notebookId,
+      title: path.basename(file.filename, path.extname(file.filename)) || file.filename,
+      type: meta.type,
+      status: 'uploaded',
+      progress: 0,
+      metadata: {
+        originalName: file.filename,
+        mimeType: file.contentType,
+        sizeBytes: file.size,
+        detectedType: meta.label,
+      },
+    })
+    .returning();
+
+  const key = buildStorageKey(notebookId, source!.id, file.filename);
+  await storage.putFile(key, file.path, file.contentType);
+
+  await db
+    .update(schema.sources)
+    .set({ storageKey: key })
+    .where(eq(schema.sources.id, source!.id));
+
+  await enqueueIngestion({ sourceId: source!.id, notebookId });
+
+  void maxBytes;
+  void randomUUID;
+
+  return {
+    id: source!.id,
+    notebookId,
+    title: source!.title,
+    type: source!.type,
+    status: source!.status,
+    progress: source!.progress,
+    error: null,
+    metadata: (source!.metadata ?? {}) as Record<string, unknown>,
+    labelIds: [],
+    chunkCount: 0,
+    createdAt: source!.createdAt.toISOString(),
+    updatedAt: source!.updatedAt.toISOString(),
+  };
 }

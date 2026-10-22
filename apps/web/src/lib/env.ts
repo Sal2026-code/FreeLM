@@ -22,8 +22,8 @@ const envSchema = z.object({
   FREELM_GOOGLE_CLIENT_SECRET: z.string().default(''),
 
   FREELM_AI_PROVIDER: z
-    .enum(['openai', 'gemini', 'anthropic', 'openai-compatible'])
-    .default('openai'),
+    .enum(['auto', 'openai', 'gemini', 'anthropic', 'openai-compatible'])
+    .default('auto'),
 
   FREELM_EMBEDDING_PROVIDER: z
     .enum(['auto', 'local', 'openai', 'gemini', 'anthropic', 'openai-compatible'])
@@ -91,6 +91,18 @@ const envSchema = z.object({
    */
   FREELM_MAX_SOURCE_MB: z.coerce.number().int().min(0).default(0),
   FREELM_MAX_SOURCE_WORDS: z.coerce.number().int().min(0).default(0),
+
+  /**
+   * The hard ceiling on a single uploaded file, in bytes.
+   *
+   * The default is one terabyte. The real bound is the disk the server has
+   * — the upload is streamed to disk, never buffered in memory.
+   */
+  FREELM_MAX_SOURCE_BYTES: z.coerce
+    .number()
+    .int()
+    .min(0)
+    .default(1024 * 1024 * 1024 * 1024),
   FREELM_ENABLE_SANDBOX: z
     .enum(['true', 'false'])
     .default('true')

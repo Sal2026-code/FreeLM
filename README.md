@@ -22,8 +22,9 @@ that other clones copy — is removed:
 |---|---|---|
 | Sources per notebook | 50 (600 on paid) | **Unlimited** |
 | Notebooks | 100 | **Unlimited** |
-| Size of one source | 200 MB | **Unlimited** |
+| Size of one source | 200 MB | **1 TB** (uploads are streamed to disk, so the real bound is your disk) |
 | Words in one source | 500,000 | **Unlimited** |
+| File types accepted | A fixed list | **Any file type** |
 | Files per upload | Bounded | **Unlimited** |
 | Audio Overviews | Metered | **Unlimited** |
 | Video Overviews | Metered | **Unlimited** |
@@ -36,6 +37,16 @@ There is no code path that refuses a request because of a count, a size or a
 plan. The only ceilings in the code are ones *you* can set yourself on your own
 server (`FREELM_MAX_SOURCE_MB`, `FREELM_MAX_SOURCE_WORDS`) — both default to `0`,
 which means unlimited.
+
+**How a 1 TB upload works:** the request body is streamed straight to a
+temporary file and split into parts *on disk*, so the server never holds an
+upload in memory. A 125 MB file was uploaded, chunked into thousands of
+passages, embedded and retrieved end to end.
+
+**Unsupported binaries are reported honestly.** FreeLM accepts any file type, but
+if a file turns out to have no extractable text, the source is kept in the
+notebook and the error says exactly that — it is never decoded into mojibake
+and passed off as content.
 
 What you *do* pay for is your own inference: whatever your chosen model
 provider charges per token. FreeLM itself costs nothing to run, and the
@@ -313,6 +324,7 @@ full list.
 | `FREELM_HISTORY_TURNS` | `50` | Previous turns sent to the model for context (a context-window budget, not a usage limit) |
 | `FREELM_MAX_SOURCE_MB` | `0` | `0` = unlimited. Set a number only to cap your own server. |
 | `FREELM_MAX_SOURCE_WORDS` | `0` | `0` = unlimited. |
+| `FREELM_MAX_SOURCE_BYTES` | `1099511627776` | Hard ceiling on one uploaded file — 1 TB. Uploads stream to disk. |
 | `FREELM_BRAVE_API_KEY` / `FREELM_TAVILY_API_KEY` | — | Optional: upgrades web search. Works keyless without them. |
 | `FREELM_GOOGLE_CLIENT_ID` / `_SECRET` | — | Optional: enables Google sign-in and Drive import |
 | `FREELM_STORAGE_DRIVER` | `local` | `local` or `s3` |
@@ -462,6 +474,10 @@ headings with the text they introduce, and keeps lists and tables intact.
 | `npm run db:seed` | Create the featured sample notebooks |
 | `npm run db:reembed` | Fill in or refresh embeddings |
 | `npm run db:studio` | Open Drizzle Studio |
+| `npm run check:providers` | Test every configured AI provider and print what to fix |
+| `npm run check:chunker` | Chunk a large file and report the result |
+| `npm run check:retrieval` | Query the vector store and show the retrieved passages |
+| `npm run check:tts` | Synthesise a line in every configured voice |
 | `npm run typecheck` | Type-check every workspace |
 
 ---

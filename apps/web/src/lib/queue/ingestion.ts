@@ -27,6 +27,7 @@ import {
   extractSpreadsheet,
   extractWebPage,
   extractYouTube,
+  looksBinary,
   type ExtractedDocument,
 } from '@/lib/ingest/extract';
 
@@ -238,6 +239,17 @@ async function extractSourceText(
     if (source.type === 'csv') return extractSpreadsheet(buffer, fileName);
     if (source.type === 'image') return extractImageOcr(buffer);
     if (source.type === 'audio') return extractAudio(buffer, fileName);
+
+    // FreeLM accepts any file type, so an unsupported binary has to be
+    // reported honestly rather than decoded into mojibake.
+    if (looksBinary(buffer)) {
+      throw new Error(
+        `"${fileName}" was uploaded, but FreeLM could not find readable text in it. ` +
+          'It was kept in the notebook, but it cannot be searched or cited. ' +
+          'PDF, Office documents, plain text, Markdown, HTML, ePub, images and audio are all supported.',
+      );
+    }
+
     return extractPlainText(buffer);
   }
 

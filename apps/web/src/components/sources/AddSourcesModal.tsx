@@ -234,7 +234,8 @@ export function AddSourcesModal({
               or drop your files
             </p>
             <p className="text-[12px] text-neutral-500">
-              pdf, images, docs, audio, and more
+              Any file type, up to 1 TB — pdf, docs, slides, spreadsheets,
+              images, audio, archives, and more
             </p>
             <input
               ref={fileInputRef}
