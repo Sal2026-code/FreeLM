@@ -3,6 +3,9 @@ node_modules/
 .pnp
 .pnp.js
 
+# Supabase CLI cache
+apps/web/supabase/.temp/
+
 # builds
 .next/
 out/
@@ -37,5 +40,5 @@ Thumbs.db
 .idea/
 .vscode/
 
-# reference material (licensed PDFs — not part of the project)
+# reference material (licensed PDFs - not part of the project)
 *.pdf
