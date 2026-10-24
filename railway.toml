@@ -1,0 +1,23 @@
+[web]
+source = "./apps/web"
+runCommand = "npm install && npm run build && npm run start"
+healthcheckPath = "/api/session"
+healthcheckTimeout = 120
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 10
+
+[worker]
+source = "./apps/web"
+runCommand = "npm install && npm run worker"
+restartPolicyType = "always"
+
+[worker:studio]
+source = "./apps/web"
+runCommand = "npm install && npm run worker:studio"
+restartPolicyType = "always"
+
+[[services.postgres]]
+name = "postgres"
+
+[[services.redis]]
+name = "redis"
