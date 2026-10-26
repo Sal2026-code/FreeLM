@@ -25,7 +25,8 @@ apps/mobile/dist/
 .env*.local
 
 # runtime data
-storage/
+/storage/
+/apps/web/storage/
 *.sqlite
 *.db
 
