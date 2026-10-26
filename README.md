@@ -490,3 +490,12 @@ users the source.
 
 This project is not affiliated with, endorsed by, or connected to Google.
 NotebookLM and Gemini Notebook are trademarks of Google LLC.
+
+## 🛠️ Built With
+
+* **AI Code Generator:** [OpenCode CLI](https://opencode.ai)
+* **Hosting Platform:** [Vercel](https://vercel.com)
+* **Database & Cache:** [Supabase PostgreSQL](https://supabase.com) & [Upstash Redis](https://upstash.com)
+
+---
+*Created by Salvatore Pistone as a 100% free, unrestricted AI research environment.*
