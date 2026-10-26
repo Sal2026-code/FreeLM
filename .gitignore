@@ -42,3 +42,5 @@ Thumbs.db
 
 # reference material (licensed PDFs - not part of the project)
 *.pdf
+.vercel
+.env*
