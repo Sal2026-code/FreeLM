@@ -18,7 +18,7 @@ import type {
   Thread,
 } from '@freelm/shared';
 
-const DEFAULT_API_URL = 'http://localhost:3000';
+const DEFAULT_API_URL = 'https://free-lm.vercel.app';
 
 let apiUrl = DEFAULT_API_URL;
 
