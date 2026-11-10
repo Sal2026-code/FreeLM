@@ -7,7 +7,7 @@
     "icon": "./assets/icon.png",
     "scheme": "freelm",
     "userInterfaceStyle": "dark",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
