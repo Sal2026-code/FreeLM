@@ -24,7 +24,7 @@ import type {
   Source,
   StudioOutput,
   Thread,
-} from '@freelm/shared';
+} from './shared';
 
 import { api } from './api';
 

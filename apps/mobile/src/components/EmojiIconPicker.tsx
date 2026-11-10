@@ -14,7 +14,7 @@ import {
   extractEmoji,
   FREQUENT_NOTEBOOK_EMOJIS,
   isEmoji,
-} from '@freelm/shared';
+} from '../shared';
 
 import { Body, Button, Field } from './ui';
 import { colors, fontSize, radius, spacing } from '../theme';

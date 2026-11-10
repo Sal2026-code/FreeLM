@@ -9,8 +9,8 @@
 import { Fragment } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-import type { Citation } from '@freelm/shared';
-import { parseCitations } from '@freelm/shared';
+import type { Citation } from '../shared';
+import { parseCitations } from '../shared';
 
 import { colors, fontSize } from '../theme';
 

@@ -16,7 +16,7 @@ import type {
   Source,
   StudioOutput,
   Thread,
-} from '@freelm/shared';
+} from './shared';
 
 const DEFAULT_API_URL = 'https://free-lm.vercel.app';
 
