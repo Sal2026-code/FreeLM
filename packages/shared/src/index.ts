@@ -1,5 +1,5 @@
 /**
- * @freelm/shared — public entry point.
+ * ./shared — public entry point.
  */
 
 export * from './types';

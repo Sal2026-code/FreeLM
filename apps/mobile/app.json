@@ -13,7 +13,9 @@
       "resizeMode": "contain",
       "backgroundColor": "#0b0b0c"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.freelm.app",
@@ -29,7 +31,12 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0b0b0c"
       },
-      "permissions": ["CAMERA", "RECORD_AUDIO"],
+      "permissions": [
+        "CAMERA",
+        "RECORD_AUDIO",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
+      ],
       "edgeToEdgeEnabled": true
     },
     "web": {
@@ -47,7 +54,16 @@
       "expo-splash-screen"
     ],
     "extra": {
-      "freelmApiUrl": "https://free-lm.vercel.app"
-    }
+      "freelmApiUrl": "https://free-lm.vercel.app",
+      "router": {
+        "asyncRoutes": {
+          "web": true
+        }
+      },
+      "eas": {
+        "projectId": "3626ad86-b836-48ef-84b7-ce7a65915b87"
+      }
+    },
+    "owner": "salcodes2026s-team"
   }
 }

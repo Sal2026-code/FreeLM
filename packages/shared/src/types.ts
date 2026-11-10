@@ -2,7 +2,7 @@
  * FreeLM — shared domain types.
  *
  * These types are the single source of truth for the web app, the mobile app
- * and the API. Import them from `@freelm/shared`.
+ * and the API. Import them from `./shared`.
  */
 
 // ---------------------------------------------------------------------------
