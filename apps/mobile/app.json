@@ -50,7 +50,15 @@
           "microphonePermission": "FreeLM uses the microphone to record lectures and voice notes."
         }
       ],
-      "expo-splash-screen"
+      "expo-splash-screen",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "minifyEnabled": false
+          }
+        }
+      ]
     ],
     "extra": {
       "freelmApiUrl": "https://free-lm.vercel.app",
