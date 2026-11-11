@@ -40,9 +40,10 @@ function newSessionId(): string {
  * In a Server Component it throws, so the failure is swallowed — the caller
  * simply gets a session that will not survive the request.
  */
-function persistSessionCookie(sessionId: string): void {
+async function persistSessionCookie(sessionId: string): Promise<void> {
   try {
-    cookies().set({
+    const cookieStore = await cookies();
+    cookieStore.set({
       name: SESSION_COOKIE,
       value: sessionId,
       path: '/',
@@ -59,7 +60,7 @@ function persistSessionCookie(sessionId: string): void {
  * Get the current session, creating a guest session when there is none.
  */
 export async function getOrCreateSession(): Promise<AppSession> {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const existingId = cookieStore.get(SESSION_COOKIE)?.value;
 
   if (existingId) {
@@ -90,14 +91,14 @@ export async function getOrCreateSession(): Promise<AppSession> {
   const expiresAt = new Date(Date.now() + SESSION_TTL_DAYS * 86_400_000);
 
   await db.insert(schema.sessions).values({ id, expiresAt });
-  persistSessionCookie(id);
+  await persistSessionCookie(id);
 
   return { id, userId: null, email: null, name: null, image: null, isGuest: true };
 }
 
 /** Read the current session without creating one. */
 export async function getSession(): Promise<AppSession | null> {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const id = cookieStore.get(SESSION_COOKIE)?.value;
   if (!id) return null;
 
