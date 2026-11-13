@@ -1,7 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  outputFileTracing: false,
   eslint: { ignoreDuringBuilds: true },
   // These packages ship native binaries or are too large for the bundler.
   experimental: {
